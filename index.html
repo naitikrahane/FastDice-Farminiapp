@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -13,414 +13,456 @@
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
+
+<div class="max-w-lg w-full">
     
-    <div class="max-w-lg w-full">
-        <!-- Header -->
-        <div class="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl mb-6 border border-white/20">
-            <div class="text-center">
-                <h1 class="text-5xl font-bold text-white mb-2">🎲</h1>
-                <h2 class="text-3xl font-bold gradient-text mb-4">Fast Dice Game</h2>
-                <div class="flex justify-center space-x-4 text-sm text-white/70">
-                    <span>⚡ Base Mainnet</span>
-                    <span>💰 0.01 USDC Prize</span>
-                    <span>⏱️ 10s Cooldown</span>
-                </div>
+    <!-- Header -->
+    <div class="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl mb-6 border border-white/20">
+        <div class="text-center">
+            <h1 class="text-5xl font-bold text-white mb-2">🎲</h1>
+            <h2 class="text-3xl font-bold gradient-text mb-4">Fast Dice Game</h2>
+            <div class="flex justify-center space-x-4 text-sm text-white/70">
+                <span>⚡ Base Mainnet</span>
+                <span>💰 0.01 USDC Prize</span>
+                <span>⏱️ 10s Cooldown</span>
             </div>
-        </div>
-
-        <!-- Main Game Card -->
-        <div class="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
-            <!-- Wallet Section -->
-            <div id="wallet-section" class="text-center mb-8">
-                <button id="connect-btn" onclick="connectWallet()" 
-                        class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-xl">
-                    <span class="mr-2">🔗</span> Connect Wallet
-                </button>
-                
-                <div id="wallet-connected" style="display: none;" class="bg-green-500/20 border border-green-400/30 rounded-2xl p-4 mt-4">
-                    <p class="text-green-300 font-semibold mb-2">✅ Wallet Connected</p>
-                    <p id="wallet-address" class="text-white/70 text-sm font-mono"></p>
-                </div>
-            </div>
-
-            <!-- Game Stats -->
-            <div id="game-stats" class="grid grid-cols-3 gap-4 mb-8">
-                <div class="bg-black/20 rounded-xl p-3 text-center">
-                    <div id="total-games" class="text-2xl font-bold text-white">0</div>
-                    <div class="text-xs text-white/60">Total Games</div>
-                </div>
-                <div class="bg-black/20 rounded-xl p-3 text-center">
-                    <div id="total-wins" class="text-2xl font-bold text-green-400">0</div>
-                    <div class="text-xs text-white/60">Total Wins</div>
-                </div>
-                <div class="bg-black/20 rounded-xl p-3 text-center">
-                    <div id="win-rate" class="text-2xl font-bold text-yellow-400">0%</div>
-                    <div class="text-xs text-white/60">Win Rate</div>
-                </div>
-            </div>
-
-            <!-- Contract Balance -->
-            <div id="contract-info" class="bg-yellow-400/20 border border-yellow-400/40 rounded-2xl p-4 mb-6 text-center">
-                <p class="text-yellow-300 font-semibold">💰 Prize Pool</p>
-                <p id="contract-balance" class="text-white text-lg font-mono">Loading...</p>
-                <p id="available-prizes" class="text-yellow-200 text-sm">Available prizes: 0</p>
-            </div>
-
-            <!-- Cooldown Timer -->
-            <div id="cooldown-section" style="display: none;" class="bg-red-400/20 border border-red-400/40 rounded-2xl p-4 mb-6 text-center">
-                <p class="text-red-300 font-semibold">⏱️ Cooldown Active</p>
-                <p id="cooldown-timer" class="text-white text-2xl font-mono">0s</p>
-                <p class="text-red-200 text-sm">Wait before next game</p>
-            </div>
-
-            <!-- Dice Selection -->
-            <div id="game-section" style="display: none;">
-                <h3 class="text-white text-center font-bold text-xl mb-6">🎯 Choose Your Number (1-6)</h3>
-                
-                <div class="grid grid-cols-3 gap-4 mb-8">
-                    <button class="dice-btn bg-gradient-to-br from-red-400 to-red-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(1)">
-                        <div class="text-4xl">⚀</div>
-                        <div class="text-sm mt-1">1</div>
-                    </button>
-                    <button class="dice-btn bg-gradient-to-br from-orange-400 to-orange-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(2)">
-                        <div class="text-4xl">⚁</div>
-                        <div class="text-sm mt-1">2</div>
-                    </button>
-                    <button class="dice-btn bg-gradient-to-br from-yellow-400 to-yellow-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(3)">
-                        <div class="text-4xl">⚂</div>
-                        <div class="text-sm mt-1">3</div>
-                    </button>
-                    <button class="dice-btn bg-gradient-to-br from-green-400 to-green-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(4)">
-                        <div class="text-4xl">⚃</div>
-                        <div class="text-sm mt-1">4</div>
-                    </button>
-                    <button class="dice-btn bg-gradient-to-br from-blue-400 to-blue-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(5)">
-                        <div class="text-4xl">⚄</div>
-                        <div class="text-sm mt-1">5</div>
-                    </button>
-                    <button class="dice-btn bg-gradient-to-br from-purple-400 to-purple-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(6)">
-                        <div class="text-4xl">⚅</div>
-                        <div class="text-sm mt-1">6</div>
-                    </button>
-                </div>
-                
-                <button id="play-btn" onclick="playGame()" disabled
-                        class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-2xl font-bold text-xl hover:from-green-600 hover:to-emerald-700 transition-all transform hover:scale-105 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed">
-                    Select a number first
-                </button>
-            </div>
-
-            <!-- Game Result -->
-            <div id="result-section" style="display: none;" class="text-center mt-6">
-                <div id="result-card" class="rounded-2xl p-8 mb-6">
-                    <div id="result-icon" class="text-8xl mb-4"></div>
-                    <h3 id="result-title" class="font-bold text-2xl mb-4"></h3>
-                    <div class="grid grid-cols-2 gap-4 text-lg mb-4">
-                        <div class="bg-black/20 rounded-xl p-3">
-                            <p class="text-white/70 text-sm">Your Choice</p>
-                            <p id="user-choice" class="text-2xl font-bold text-yellow-300"></p>
-                        </div>
-                        <div class="bg-black/20 rounded-xl p-3">
-                            <p class="text-white/70 text-sm">Dice Result</p>
-                            <p id="dice-result" class="text-2xl font-bold text-yellow-300"></p>
-                        </div>
-                    </div>
-                    <div id="prize-info"></div>
-                </div>
-                
-                <button onclick="resetGame()" 
-                        class="w-full bg-gradient-to-r from-gray-500 to-gray-600 text-white py-4 rounded-2xl font-bold text-xl hover:from-gray-600 hover:to-gray-700 transition-all">
-                    🎲 Play Again
-                </button>
-            </div>
-        </div>
-        
-        <!-- Status Messages -->
-        <div id="status-message" class="mt-6 text-center" style="display: none;">
-            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
-                <p id="status-text" class="text-white"></p>
-            </div>
-        </div>
-        
-        <!-- Contract Info -->
-        <div class="mt-6 text-center text-white/50 text-xs">
-            <p class="mb-1">📄 FastDiceGame Contract</p>
-            <p id="contract-address-display">Deploy and update address</p>
         </div>
     </div>
 
-    <script>
-        // Contract Configuration
-        const CONTRACT_ADDRESS = "0xeA3F62030029DD99E487f6A3c415dc31e03337FD";
-        const BASE_MAINNET_CHAIN_ID = 8453;
-        const BASE_RPC_ENDPOINTS = [
-            'https://mainnet.base.org',
-            'https://base-mainnet.public.blastapi.io',
-            'https://base.gateway.tenderly.co',
-            'https://base-rpc.publicnode.com'
-        ];
-        const CONTRACT_ABI = [
-            "function play(uint256 chosenNumber) external",
-            "function getCooldown(address player) external view returns (uint256)",
-            "function getContractBalance() external view returns (uint256)",
-            "function getAvailablePrizes() external view returns (uint256)",
-            "function getGameStats() external view returns (uint256 games, uint256 wins, uint256 winRate)",
-            "function lastPlayTime(address) external view returns (uint256)",
-            "event GamePlayed(address indexed player, uint256 chosenNumber, uint256 rolledNumber, bool won)",
-            "event PrizeClaimed(address indexed player, uint256 amount)"
-        ];
+    <!-- Main Game Card -->
+    <div class="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
+        
+        <!-- Wallet Section -->
+        <div id="wallet-section" class="text-center mb-8">
+            <button id="connect-btn" onclick="connectWallet()" 
+                    class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-xl">
+                <span class="mr-2">🔗</span> Connect Wallet
+            </button>
+            
+            <div id="wallet-connected" style="display: none;" class="bg-green-500/20 border border-green-400/30 rounded-2xl p-4 mt-4">
+                <p class="text-green-300 font-semibold mb-2">✅ Wallet Connected</p>
+                <p id="wallet-address" class="text-white/70 text-sm font-mono"></p>
+            </div>
+        </div>
 
-        let provider, signer, contract, userAddress;
-        let readOnlyProvider;
-        let selectedChoice = 0;
-        let cooldownInterval;
-        let farcasterSdk = null;
-        const diceSymbols = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+        <!-- Game Stats -->
+        <div id="game-stats" class="grid grid-cols-3 gap-4 mb-8">
+            <div class="bg-black/20 rounded-xl p-3 text-center">
+                <div id="total-games" class="text-2xl font-bold text-white">0</div>
+                <div class="text-xs text-white/60">Total Games</div>
+            </div>
+            <div class="bg-black/20 rounded-xl p-3 text-center">
+                <div id="total-wins" class="text-2xl font-bold text-green-400">0</div>
+                <div class="text-xs text-white/60">Total Wins</div>
+            </div>
+            <div class="bg-black/20 rounded-xl p-3 text-center">
+                <div id="win-rate" class="text-2xl font-bold text-yellow-400">0%</div>
+                <div class="text-xs text-white/60">Win Rate</div>
+            </div>
+        </div>
 
-        class FarcasterProviderWrapper {
-            constructor(originalProvider) {
-                this.originalProvider = originalProvider;
-                this.isMetaMask = false;
-                this.isFarcaster = true;
-                Object.keys(originalProvider).forEach(key => {
-                    if (typeof originalProvider[key] === 'function') {
-                        this[key] = originalProvider[key].bind(originalProvider);
-                    } else {
-                        this[key] = originalProvider[key];
-                    }
-                });
-            }
-            async request(args) {
-                try {
-                    if (this.originalProvider.request) return await this.originalProvider.request(args);
-                    if (this.originalProvider.send) return await this.originalProvider.send(args.method, args.params || []);
-                    throw new Error(`Method ${args.method} not supported`);
-                } catch (error) {
-                    switch (args.method) {
-                        case 'eth_chainId': return '0x2105';
-                        case 'net_version': return '8453';
-                        case 'eth_getBalance': return '0x0';
-                        case 'eth_gasPrice': return '0x3b9aca00';
-                        case 'eth_blockNumber': return '0x1000000';
-                        default: throw error;
-                    }
+        <!-- Contract Balance -->
+        <div id="contract-info" class="bg-yellow-400/20 border border-yellow-400/40 rounded-2xl p-4 mb-6 text-center">
+            <p class="text-yellow-300 font-semibold">💰 Prize Pool</p>
+            <p id="contract-balance" class="text-white text-lg font-mono">Loading...</p>
+            <p id="available-prizes" class="text-yellow-200 text-sm">Available prizes: 0</p>
+        </div>
+
+        <!-- Cooldown Timer -->
+        <div id="cooldown-section" style="display: none;" class="bg-red-400/20 border border-red-400/40 rounded-2xl p-4 mb-6 text-center">
+            <p class="text-red-300 font-semibold">⏱️ Cooldown Active</p>
+            <p id="cooldown-timer" class="text-white text-2xl font-mono">0s</p>
+            <p class="text-red-200 text-sm">Wait before next game</p>
+        </div>
+
+        <!-- Dice Selection -->
+        <div id="game-section" style="display: none;">
+            <h3 class="text-white text-center font-bold text-xl mb-6">🎯 Choose Your Number (1-6)</h3>
+            
+            <div class="grid grid-cols-3 gap-4 mb-8">
+                <button class="dice-btn bg-gradient-to-br from-red-400 to-red-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(1)">
+                    <div class="text-4xl">⚀</div>
+                    <div class="text-sm mt-1">1</div>
+                </button>
+                <button class="dice-btn bg-gradient-to-br from-orange-400 to-orange-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(2)">
+                    <div class="text-4xl">⚁</div>
+                    <div class="text-sm mt-1">2</div>
+                </button>
+                <button class="dice-btn bg-gradient-to-br from-yellow-400 to-yellow-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(3)">
+                    <div class="text-4xl">⚂</div>
+                    <div class="text-sm mt-1">3</div>
+                </button>
+                <button class="dice-btn bg-gradient-to-br from-green-400 to-green-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(4)">
+                    <div class="text-4xl">⚃</div>
+                    <div class="text-sm mt-1">4</div>
+                </button>
+                <button class="dice-btn bg-gradient-to-br from-blue-400 to-blue-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(5)">
+                    <div class="text-4xl">⚄</div>
+                    <div class="text-sm mt-1">5</div>
+                </button>
+                <button class="dice-btn bg-gradient-to-br from-purple-400 to-purple-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(6)">
+                    <div class="text-4xl">⚅</div>
+                    <div class="text-sm mt-1">6</div>
+                </button>
+            </div>
+            
+            <button id="play-btn" onclick="playGame()" disabled
+                    class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-2xl font-bold text-xl hover:from-green-600 hover:to-emerald-700 transition-all transform hover:scale-105 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed">
+                Select a number first
+            </button>
+        </div>
+
+        <!-- Game Result -->
+        <div id="result-section" style="display: none;" class="text-center mt-6">
+            <div id="result-card" class="rounded-2xl p-8 mb-6">
+                <div id="result-icon" class="text-8xl mb-4"></div>
+                <h3 id="result-title" class="font-bold text-2xl mb-4"></h3>
+                <div class="grid grid-cols-2 gap-4 text-lg mb-4">
+                    <div class="bg-black/20 rounded-xl p-3">
+                        <p class="text-white/70 text-sm">Your Choice</p>
+                        <p id="user-choice" class="text-2xl font-bold text-yellow-300"></p>
+                    </div>
+                    <div class="bg-black/20 rounded-xl p-3">
+                        <p class="text-white/70 text-sm">Dice Result</p>
+                        <p id="dice-result" class="text-2xl font-bold text-yellow-300"></p>
+                    </div>
+                </div>
+                <div id="prize-info"></div>
+            </div>
+            
+            <button onclick="resetGame()" 
+                    class="w-full bg-gradient-to-r from-gray-500 to-gray-600 text-white py-4 rounded-2xl font-bold text-xl hover:from-gray-600 hover:to-gray-700 transition-all">
+                🎲 Play Again
+            </button>
+        </div>
+    </div>
+    
+    <!-- Status Messages -->
+    <div id="status-message" class="mt-6 text-center" style="display: none;">
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
+            <p id="status-text" class="text-white"></p>
+        </div>
+    </div>
+    
+    <!-- Contract Info -->
+    <div class="mt-6 text-center text-white/50 text-xs">
+        <p class="mb-1">📄 FastDiceGame Contract</p>
+        <p id="contract-address-display">Deploy and update address</p>
+    </div>
+</div>
+
+<script>
+    // ------------------- CONTRACT CONFIG -------------------
+    const CONTRACT_ADDRESS = "0xeA3F62030029DD99E487f6A3c415dc31e03337FD";
+    const BASE_MAINNET_CHAIN_ID = 8453;
+
+    const BASE_RPC_ENDPOINTS = [
+        'https://mainnet.base.org',
+        'https://base-mainnet.public.blastapi.io',
+        'https://base.gateway.tenderly.co',
+        'https://base-rpc.publicnode.com'
+    ];
+
+    const CONTRACT_ABI = [
+        "function play(uint256 chosenNumber) external",
+        "function getCooldown(address player) external view returns (uint256)",
+        "function getContractBalance() external view returns (uint256)",
+        "function getAvailablePrizes() external view returns (uint256)",
+        "function getGameStats() external view returns (uint256 games, uint256 wins, uint256 winRate)",
+        "event GamePlayed(address indexed player, uint256 chosenNumber, uint256 rolledNumber, bool won)"
+    ];
+
+    // ------------------- GAME STATE -------------------
+    let provider, signer, contract, userAddress;
+    let readOnlyProvider;
+    let selectedChoice = 0;
+    let cooldownInterval;
+    const diceSymbols = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+    let farcasterSdk = null;
+
+    // ------------------- FARCASTER PROVIDER WRAPPER -------------------
+    class FarcasterProviderWrapper {
+        constructor(originalProvider) {
+            this.originalProvider = originalProvider;
+            this.isFarcaster = true;
+            this.isMetaMask = false;
+
+            Object.keys(originalProvider).forEach(key => {
+                if (typeof originalProvider[key] !== 'function') {
+                    this[key] = originalProvider[key];
                 }
-            }
-            async send(method, params) { return this.request({ method, params }); }
-            on(eventName, listener) { if (this.originalProvider.on) return this.originalProvider.on(eventName, listener); return this; }
-            removeListener(eventName, listener) { if (this.originalProvider.removeListener) return this.originalProvider.removeListener(eventName, listener); return this; }
-        }
-
-        async function createResilientRPCProvider() {
-            for (const rpcUrl of BASE_RPC_ENDPOINTS) {
-                try {
-                    const testProvider = new ethers.providers.JsonRpcProvider(rpcUrl);
-                    await testProvider.getNetwork();
-                    console.log('✅ Connected to RPC:', rpcUrl);
-                    return testProvider;
-                } catch { continue; }
-            }
-            throw new Error('All RPC endpoints failed');
-        }
-
-        window.addEventListener('load', async function() {
-            document.getElementById('contract-address-display').textContent = CONTRACT_ADDRESS;
-            await initReadOnlyProvider();
-            await waitForFarcasterSDK();
-        });
-
-        async function waitForFarcasterSDK() {
-            let attempts = 0;
-            const maxAttempts = 50;
-            const checkSDK = () => { if (window.sdk && window.sdk.actions) { farcasterSdk = window.sdk; farcasterSdk.actions.ready({ disableNativeGestures: true }); return true; } return false; };
-            if (checkSDK()) return;
-            return new Promise(resolve => {
-                const interval = setInterval(() => {
-                    attempts++;
-                    if (checkSDK() || attempts >= maxAttempts) { clearInterval(interval); resolve(); }
-                }, 100);
             });
         }
 
-        async function initReadOnlyProvider() {
-            try {
-                readOnlyProvider = await createResilientRPCProvider();
-                await loadInitialData();
-            } catch (error) { console.error(error); showStatus('⚠️ Unable to load contract data', 'info'); }
-        }
+        async request(args) {
+            if (!args || !args.method) throw new Error('Missing method');
 
-        async function loadInitialData() {
-            if (!readOnlyProvider) return;
-            try {
-                const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider);
-                const [gamesResult, balanceResult, prizesResult] = await Promise.all([
-                    readOnlyContract.getGameStats().catch(() => [0,0,0]),
-                    readOnlyContract.getContractBalance().catch(() => 0),
-                    readOnlyContract.getAvailablePrizes().catch(() => 0)
-                ]);
-                const [games, wins, winRate] = gamesResult.map(v => v.toString());
-                const balance = ethers.utils.formatUnits(balanceResult, 6);
-                const prizes = prizesResult.toString();
-                document.getElementById('total-games').textContent = games;
-                document.getElementById('total-wins').textContent = wins;
-                document.getElementById('win-rate').textContent = winRate+'%';
-                document.getElementById('contract-balance').textContent = `${balance} USDC`;
-                document.getElementById('available-prizes').textContent = `Available prizes: ${prizes}`;
-            } catch (error) { console.error(error); }
-        }
+            if (this.originalProvider.request) return await this.originalProvider.request(args);
+            if (this.originalProvider.send) return await this.originalProvider.send(args.method, args.params || []);
 
-        async function connectWallet() {
-            try {
-                if (farcasterSdk && farcasterSdk.wallet) {
-                    const rawProvider = await farcasterSdk.wallet.getEthereumProvider();
-                    if (rawProvider) {
-                        const wrappedProvider = new FarcasterProviderWrapper(rawProvider);
-                        provider = new ethers.providers.Web3Provider(wrappedProvider, { name:'base', chainId:BASE_MAINNET_CHAIN_ID });
-                        provider.detectNetwork = async () => ({ name:'base', chainId:BASE_MAINNET_CHAIN_ID });
-                        signer = provider.getSigner();
-                        userAddress = await signer.getAddress();
-                        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-                        // Fix for sending transaction
-                        contract.play = async function(chosenNumber) { return await this.connect(signer).play(chosenNumber); };
-                        updateWalletUI('Farcaster');
-                        await checkCooldown();
-                        showStatus('✅ Farcaster wallet connected!', 'success');
-                        return;
-                    }
-                }
-                if (typeof window.ethereum === 'undefined') { showStatus('❌ No wallet found!', 'error'); return; }
-                await window.ethereum.request({ method: 'eth_requestAccounts' });
-                provider = new ethers.providers.Web3Provider(window.ethereum);
-                signer = provider.getSigner();
-                userAddress = await signer.getAddress();
-                const network = await provider.getNetwork();
-                if (network.chainId !== BASE_MAINNET_CHAIN_ID) {
-                    await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId:'0x2105' }] });
-                }
-                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-                contract.play = async function(chosenNumber) { return await this.connect(signer).play(chosenNumber); };
-                updateWalletUI('MetaMask');
-                await checkCooldown();
-                showStatus('✅ MetaMask connected!', 'success');
-            } catch (error) { console.error(error); showStatus('❌ Failed to connect: '+(error.message||'Unknown'), 'error'); }
-        }
-
-        function updateWalletUI(walletType='Wallet') {
-            document.getElementById('connect-btn').style.display='none';
-            document.getElementById('wallet-connected').style.display='block';
-            document.getElementById('wallet-address').textContent = userAddress ? `${userAddress.slice(0,6)}...${userAddress.slice(-4)}`:'Unknown';
-            document.getElementById('game-section').style.display='block';
-            document.querySelector('#wallet-connected p').textContent = `✅ ${walletType} Connected`;
-        }
-
-        function selectNumber(number) {
-            selectedChoice=number;
-            document.querySelectorAll('.dice-btn').forEach(btn=>btn.classList.remove('dice-glow','ring-4','ring-yellow-400'));
-            event.target.classList.add('dice-glow','ring-4','ring-yellow-400');
-            document.getElementById('play-btn').disabled=false;
-            document.getElementById('play-btn').textContent=`🎲 Roll Dice: ${number}`;
-        }
-
-        async function playGame() {
-            if(!selectedChoice || !userAddress || !contract) return;
-            try {
-                showStatus('🎲 Rolling dice...', 'info');
-                document.getElementById('play-btn').disabled=true;
-                document.getElementById('play-btn').textContent='🎲 Rolling...';
-                let tx, attempts=0;
-                while(attempts<3){
-                    try { tx = await contract.play(selectedChoice); break; } 
-                    catch(e){ attempts++; if(attempts===3)throw e; await new Promise(r=>setTimeout(r,1000)); }
-                }
-                showStatus('⏳ Transaction sent, waiting confirmation...', 'info');
-                const receipt = await tx.wait();
-                const gameEvent = receipt.events?.find(e=>e.event==='GamePlayed');
-                if(gameEvent){
-                    const [player, chosenNumber, rolledNumber, won] = gameEvent.args;
-                    await showGameResult(chosenNumber.toNumber(), rolledNumber.toNumber(), won);
-                } else showStatus('⚠️ Game result unclear', 'warning');
-                await loadInitialData();
-                await checkCooldown();
-            } catch (error) {
-                console.error(error);
-                showStatus('❌ '+(error.message||'Game failed'), 'error');
-                document.getElementById('play-btn').disabled=false;
-                document.getElementById('play-btn').textContent=`🎲 Roll Dice: ${selectedChoice}`;
+            switch (args.method) {
+                case 'eth_chainId': return '0x2105';
+                case 'net_version': return '8453';
+                case 'eth_accounts': return [];
+                case 'eth_getBalance': return '0x0';
+                case 'eth_blockNumber': return '0x1000000';
+                case 'eth_gasPrice': return '0x3b9aca00';
+                default: throw new Error(`Method ${args.method} not supported`);
             }
         }
 
-        async function showGameResult(chosenNumber, rolledNumber, won) {
-            document.getElementById('game-section').style.display='none';
-            document.getElementById('result-section').style.display='block';
-            const resultCard=document.getElementById('result-card');
-            const resultIcon=document.getElementById('result-icon');
-            const resultTitle=document.getElementById('result-title');
-            const prizeInfo=document.getElementById('prize-info');
-            document.getElementById('user-choice').innerHTML=`${chosenNumber}<br>${diceSymbols[chosenNumber-1]}`;
-            document.getElementById('dice-result').innerHTML=`${rolledNumber}<br>${diceSymbols[rolledNumber-1]}`;
-            if(won){
-                resultCard.className='winner-animation bg-green-400/20 border-2 border-green-400 rounded-2xl p-8 mb-6';
-                resultIcon.textContent='🎉';
-                resultTitle.innerHTML='<span class="text-green-300">JACKPOT! YOU WON!</span>';
-                prizeInfo.innerHTML=`<div class="bg-yellow-400/20 border border-yellow-400/40 rounded-xl p-4">
-                    <p class="text-yellow-300 font-bold text-lg">🏆 Prize: 0.01 USDC</p>
-                    <p class="text-white/80 text-sm mt-1">Sent to your wallet!</p>
-                </div>`;
-                showStatus('🎉 Congratulations! You won 0.01 USDC!', 'success');
-            } else {
-                resultCard.className='bg-red-400/20 border-2 border-red-400 rounded-2xl p-8 mb-6';
-                resultIcon.textContent='😔';
-                resultTitle.innerHTML='<span class="text-red-300">Not This Time!</span>';
-                prizeInfo.innerHTML=`<div class="bg-gray-400/20 border border-gray-400/40 rounded-xl p-4">
-                    <p class="text-gray-300">Better luck next roll!</p>
-                    <p class="text-white/60 text-sm mt-1">Try again in 10 seconds</p>
-                </div>`;
-                showStatus('😔 No win this time. Try again in 10 seconds!', 'info');
+        async send(method, params) {
+            return this.request({ method, params });
+        }
+
+        on(eventName, listener) {
+            if (this.originalProvider.on) return this.originalProvider.on(eventName, listener);
+        }
+
+        removeListener(eventName, listener) {
+            if (this.originalProvider.removeListener) return this.originalProvider.removeListener(eventName, listener);
+        }
+    }
+
+    // ------------------- PROVIDER + CONTRACT -------------------
+    async function createResilientRPCProvider() {
+        for (const url of BASE_RPC_ENDPOINTS) {
+            try {
+                const p = new ethers.providers.JsonRpcProvider(url);
+                await p.getNetwork();
+                return p;
+            } catch {}
+        }
+        throw new Error('All RPCs failed');
+    }
+
+    async function initReadOnlyProvider() {
+        try {
+            readOnlyProvider = await createResilientRPCProvider();
+            await loadInitialData();
+        } catch {
+            showStatus('⚠️ Unable to load contract data', 'error');
+        }
+    }
+
+    async function loadInitialData() {
+        if (!readOnlyProvider) return;
+        try {
+            const roContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider);
+            const [stats, balance, prizes] = await Promise.all([
+                roContract.getGameStats().catch(()=>[0,0,0]),
+                roContract.getContractBalance().catch(()=>0),
+                roContract.getAvailablePrizes().catch(()=>0)
+            ]);
+            const [games, wins, winRate] = stats.map(v=>v.toString());
+            document.getElementById('total-games').textContent = games;
+            document.getElementById('total-wins').textContent = wins;
+            document.getElementById('win-rate').textContent = winRate + '%';
+            document.getElementById('contract-balance').textContent = ethers.utils.formatUnits(balance,6) + ' USDC';
+            document.getElementById('available-prizes').textContent = `Available prizes: ${prizes}`;
+        } catch {
+            document.getElementById('total-games').textContent = '0';
+            document.getElementById('total-wins').textContent = '0';
+            document.getElementById('win-rate').textContent = '0%';
+            document.getElementById('contract-balance').textContent = 'Unavailable';
+            document.getElementById('available-prizes').textContent = 'Loading failed';
+        }
+    }
+
+    // ------------------- WALLET CONNECTION -------------------
+    async function connectWallet() {
+        try {
+            showStatus('🔌 Connecting wallet...', 'info');
+
+            if (farcasterSdk?.wallet) {
+                const rawProvider = await farcasterSdk.wallet.getEthereumProvider();
+                if(rawProvider){
+                    provider = new ethers.providers.Web3Provider(new FarcasterProviderWrapper(rawProvider), { chainId: BASE_MAINNET_CHAIN_ID });
+                    signer = provider.getSigner();
+                    userAddress = await signer.getAddress();
+                    contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                    updateWalletUI('Farcaster');
+                    await checkCooldown();
+                    showStatus('✅ Farcaster wallet connected!', 'success');
+                    return;
+                }
             }
+
+            if (!window.ethereum) throw new Error('No wallet found!');
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            signer = provider.getSigner();
+            userAddress = await signer.getAddress();
+            const network = await provider.getNetwork();
+            if(network.chainId !== BASE_MAINNET_CHAIN_ID){
+                await window.ethereum.request({ method: 'wallet_switchEthereumChain', params:[{ chainId:'0x2105'}] });
+            }
+            contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+            updateWalletUI('MetaMask');
+            await checkCooldown();
+            showStatus('✅ MetaMask connected!', 'success');
+
+        } catch(e) {
+            console.error(e);
+            showStatus('❌ Wallet connection failed: '+ e.message, 'error');
         }
+    }
 
-        function resetGame() {
-            document.getElementById('result-section').style.display='none';
-            document.getElementById('game-section').style.display='block';
-            selectedChoice=0;
-            document.querySelectorAll('.dice-btn').forEach(btn=>btn.classList.remove('dice-glow','ring-4','ring-yellow-400'));
-            document.getElementById('play-btn').disabled=true;
-            document.getElementById('play-btn').textContent='Select a number first';
-            checkCooldown();
-        }
+    function updateWalletUI(type){
+        document.getElementById('connect-btn').style.display = 'none';
+        document.getElementById('wallet-connected').style.display = 'block';
+        document.getElementById('wallet-address').textContent = userAddress? `${userAddress.slice(0,6)}...${userAddress.slice(-4)}`:'Unknown';
+        document.getElementById('game-section').style.display = 'block';
+        document.querySelector('#wallet-connected p').textContent = `✅ ${type} Connected`;
+    }
 
-        async function checkCooldown() {
-            if(!userAddress) return;
-            try{
-                const checkContract=readOnlyProvider ? new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider) : contract;
-                if(!checkContract) return;
-                const cooldownTime=await checkContract.getCooldown(userAddress);
-                let remaining=cooldownTime.toNumber();
-                if(remaining>0){
-                    document.getElementById('cooldown-section').style.display='block';
-                    document.getElementById('game-section').style.display='none';
-                    if(cooldownInterval) clearInterval(cooldownInterval);
-                    cooldownInterval=setInterval(()=>{
-                        document.getElementById('cooldown-timer').textContent=`${remaining}s`;
-                        remaining--;
-                        if(remaining<0){ clearInterval(cooldownInterval); document.getElementById('cooldown-section').style.display='none'; document.getElementById('game-section').style.display='block'; }
-                    },1000);
-                } else { document.getElementById('cooldown-section').style.display='none'; if(cooldownInterval) clearInterval(cooldownInterval); }
-            }catch(e){console.error(e);}
-        }
+    // ------------------- GAME LOGIC -------------------
+    function selectNumber(number){
+        selectedChoice = number;
+        document.querySelectorAll('.dice-btn').forEach(btn=>btn.classList.remove('dice-glow','ring-4','ring-yellow-400'));
+        event.target.classList.add('dice-glow','ring-4','ring-yellow-400');
+        document.getElementById('play-btn').disabled=false;
+        document.getElementById('play-btn').textContent = `🎲 Roll Dice: ${number}`;
+    }
 
-        function showStatus(message,type='info'){ const statusDiv=document.getElementById('status-message'); const statusText=document.getElementById('status-text'); statusText.textContent=message; statusDiv.style.display='block'; if(type!=='error')setTimeout(()=>{statusDiv.style.display='none';},6000); }
-
-        setInterval(()=>{ if(readOnlyProvider) loadInitialData(); },30000);
-        window.addEventListener('beforeunload',()=>{ if(cooldownInterval) clearInterval(cooldownInterval); });
-    </script>
-
-    <script type="module">
+    async function playGame(){
+        if(!selectedChoice || !userAddress || !contract) return;
         try{
-            const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk');
-            window.sdk = sdk;
-            await sdk.actions.ready({ disableNativeGestures: true });
-        }catch(e){ console.error('Farcaster SDK failed:', e); }
-    </script>
+            showStatus('🎲 Rolling dice...', 'info');
+            document.getElementById('play-btn').disabled=true;
+            document.getElementById('play-btn').textContent='🎲 Rolling...';
+
+            const tx = await contract.play(selectedChoice);
+            await tx.wait();
+
+            const event = (await contract.queryFilter(contract.filters.GamePlayed(userAddress)) ).pop();
+            if(event){
+                const [player, chosenNumber, rolledNumber, won] = event.args;
+                await showGameResult(chosenNumber.toNumber(), rolledNumber.toNumber(), won);
+            }
+            await loadInitialData();
+            await checkCooldown();
+        } catch(e){
+            console.error(e);
+            showStatus('❌ Game failed: '+ e.message, 'error');
+            document.getElementById('play-btn').disabled=false;
+            document.getElementById('play-btn').textContent=`🎲 Roll Dice: ${selectedChoice}`;
+        }
+    }
+
+    async function showGameResult(chosenNumber, rolledNumber, won){
+        document.getElementById('game-section').style.display='none';
+        document.getElementById('result-section').style.display='block';
+
+        document.getElementById('user-choice').innerHTML=`${chosenNumber}<br>${diceSymbols[chosenNumber-1]}`;
+        document.getElementById('dice-result').innerHTML=`${rolledNumber}<br>${diceSymbols[rolledNumber-1]}`;
+
+        const resultCard=document.getElementById('result-card');
+        const resultIcon=document.getElementById('result-icon');
+        const resultTitle=document.getElementById('result-title');
+        const prizeInfo=document.getElementById('prize-info');
+
+        if(won){
+            resultCard.className='winner-animation bg-green-400/20 border-2 border-green-400 rounded-2xl p-8 mb-6';
+            resultIcon.textContent='🎉';
+            resultTitle.innerHTML='<span class="text-green-300">JACKPOT! YOU WON!</span>';
+            prizeInfo.innerHTML=`<div class="bg-yellow-400/20 border border-yellow-400/40 rounded-xl p-4"><p class="text-yellow-300 font-bold text-lg">🏆 Prize: 0.01 USDC</p><p class="text-white/80 text-sm mt-1">Sent to your wallet!</p></div>`;
+            showStatus('🎉 Congratulations! You won 0.01 USDC!', 'success');
+        } else {
+            resultCard.className='bg-red-400/20 border-2 border-red-400 rounded-2xl p-8 mb-6';
+            resultIcon.textContent='😔';
+            resultTitle.innerHTML='<span class="text-red-300">Not This Time!</span>';
+            prizeInfo.innerHTML=`<div class="bg-gray-400/20 border border-gray-400/40 rounded-xl p-4"><p class="text-gray-300">Better luck next roll!</p><p class="text-white/60 text-sm mt-1">Try again in 10 seconds</p></div>`;
+            showStatus('😔 No win this time. Try again in 10 seconds!', 'info');
+        }
+    }
+
+    function resetGame(){
+        document.getElementById('result-section').style.display='none';
+        document.getElementById('game-section').style.display='block';
+        selectedChoice=0;
+        document.querySelectorAll('.dice-btn').forEach(btn=>btn.classList.remove('dice-glow','ring-4','ring-yellow-400'));
+        document.getElementById('play-btn').disabled=true;
+        document.getElementById('play-btn').textContent='Select a number first';
+        checkCooldown();
+    }
+
+    async function checkCooldown(){
+        if(!userAddress) return;
+        try{
+            const checkContract = readOnlyProvider ? new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider) : contract;
+            const cooldownTime = await checkContract.getCooldown(userAddress);
+            const cooldownSeconds = cooldownTime.toNumber();
+            if(cooldownSeconds>0){
+                document.getElementById('cooldown-section').style.display='block';
+                document.getElementById('game-section').style.display='none';
+                let remaining=cooldownSeconds;
+                if(cooldownInterval) clearInterval(cooldownInterval);
+                cooldownInterval=setInterval(()=>{
+                    document.getElementById('cooldown-timer').textContent=`${remaining}s`;
+                    remaining--;
+                    if(remaining<0){
+                        clearInterval(cooldownInterval);
+                        document.getElementById('cooldown-section').style.display='none';
+                        document.getElementById('game-section').style.display='block';
+                    }
+                },1000);
+            } else {
+                document.getElementById('cooldown-section').style.display='none';
+                if(cooldownInterval) clearInterval(cooldownInterval);
+            }
+        } catch(e){
+            console.error('Cooldown check error:',e);
+        }
+    }
+
+    function showStatus(message,type='info'){
+        const statusDiv=document.getElementById('status-message');
+        const statusText=document.getElementById('status-text');
+        statusText.textContent=message;
+        statusDiv.style.display='block';
+        if(type!=='error'){
+            setTimeout(()=>statusDiv.style.display='none',6000);
+        }
+        console.log(`Status (${type}):`,message);
+    }
+
+    window.addEventListener('load',async()=>{
+        document.getElementById('contract-address-display').textContent=CONTRACT_ADDRESS;
+        await initReadOnlyProvider();
+        await waitForFarcasterSDK();
+    });
+
+    async function waitForFarcasterSDK(){
+        let attempts=0;
+        const maxAttempts=50;
+        return new Promise(resolve=>{
+            const interval=setInterval(()=>{
+                attempts++;
+                if(window.sdk?.actions || attempts>=maxAttempts){
+                    clearInterval(interval);
+                    if(window.sdk?.actions) farcasterSdk=window.sdk;
+                    resolve();
+                }
+            },100);
+        });
+    }
+
+    setInterval(()=>{ if(readOnlyProvider) loadInitialData(); },30000);
+    window.addEventListener('beforeunload',()=>{ if(cooldownInterval) clearInterval(cooldownInterval); });
+</script>
+
+<!-- Farcaster SDK -->
+<script type="module">
+    try {
+        const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk');
+        window.sdk = sdk;
+        await sdk.actions.ready({ disableNativeGestures: true });
+        console.log('✅ Farcaster SDK initialized');
+    } catch (error) {
+        console.error('❌ Farcaster SDK failed:', error);
+    }
+</script>
+
 </body>
 </html>
