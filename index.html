@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -15,7 +15,6 @@
 <body class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
     
     <div class="max-w-lg w-full">
-        
         <!-- Header -->
         <div class="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl mb-6 border border-white/20">
             <div class="text-center">
@@ -31,7 +30,6 @@
 
         <!-- Main Game Card -->
         <div class="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
-            
             <!-- Wallet Section -->
             <div id="wallet-section" class="text-center mb-8">
                 <button id="connect-btn" onclick="connectWallet()" 
@@ -155,16 +153,12 @@
         // Contract Configuration
         const CONTRACT_ADDRESS = "0xeA3F62030029DD99E487f6A3c415dc31e03337FD";
         const BASE_MAINNET_CHAIN_ID = 8453;
-        
-        // Multiple RPC endpoints for maximum reliability
         const BASE_RPC_ENDPOINTS = [
             'https://mainnet.base.org',
             'https://base-mainnet.public.blastapi.io',
             'https://base.gateway.tenderly.co',
             'https://base-rpc.publicnode.com'
         ];
-        
-        // Contract ABI
         const CONTRACT_ABI = [
             "function play(uint256 chosenNumber) external",
             "function getCooldown(address player) external view returns (uint256)",
@@ -175,25 +169,19 @@
             "event GamePlayed(address indexed player, uint256 chosenNumber, uint256 rolledNumber, bool won)",
             "event PrizeClaimed(address indexed player, uint256 amount)"
         ];
-        
-        // Game State
+
         let provider, signer, contract, userAddress;
         let readOnlyProvider;
         let selectedChoice = 0;
         let cooldownInterval;
         let farcasterSdk = null;
-        
-        // Dice symbols
         const diceSymbols = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-        
-        // Create advanced provider wrapper for Farcaster compatibility
+
         class FarcasterProviderWrapper {
             constructor(originalProvider) {
                 this.originalProvider = originalProvider;
                 this.isMetaMask = false;
                 this.isFarcaster = true;
-                
-                // Copy all methods from original provider
                 Object.keys(originalProvider).forEach(key => {
                     if (typeof originalProvider[key] === 'function') {
                         this[key] = originalProvider[key].bind(originalProvider);
@@ -202,62 +190,27 @@
                     }
                 });
             }
-            
             async request(args) {
-                console.log('🔄 Farcaster provider request:', args.method);
-                
-                // Handle unsupported methods gracefully
                 try {
-                    if (this.originalProvider.request) {
-                        return await this.originalProvider.request(args);
-                    } else if (this.originalProvider.send) {
-                        return await this.originalProvider.send(args.method, args.params || []);
-                    } else {
-                        throw new Error(`Method ${args.method} not supported by Farcaster provider`);
-                    }
+                    if (this.originalProvider.request) return await this.originalProvider.request(args);
+                    if (this.originalProvider.send) return await this.originalProvider.send(args.method, args.params || []);
+                    throw new Error(`Method ${args.method} not supported`);
                 } catch (error) {
-                    console.log(`⚠️ Method ${args.method} failed:`, error.message);
-                    
-                    // Provide fallbacks for common methods
                     switch (args.method) {
-                        case 'eth_chainId':
-                            return '0x2105'; // Base Mainnet
-                        case 'net_version':
-                            return '8453';
-                        case 'eth_getBalance':
-                            return '0x0'; // Default balance
-                        case 'eth_gasPrice':
-                            return '0x3b9aca00'; // 1 gwei
-                        case 'eth_blockNumber':
-                            return '0x1000000'; // Dummy block number
-                        default:
-                            throw error;
+                        case 'eth_chainId': return '0x2105';
+                        case 'net_version': return '8453';
+                        case 'eth_getBalance': return '0x0';
+                        case 'eth_gasPrice': return '0x3b9aca00';
+                        case 'eth_blockNumber': return '0x1000000';
+                        default: throw error;
                     }
                 }
             }
-            
-            async send(method, params) {
-                return this.request({ method, params });
-            }
-            
-            // EIP-1193 event methods
-            on(eventName, listener) {
-                if (this.originalProvider.on) {
-                    return this.originalProvider.on(eventName, listener);
-                }
-                console.log(`Event listener ${eventName} not supported`);
-                return this;
-            }
-            
-            removeListener(eventName, listener) {
-                if (this.originalProvider.removeListener) {
-                    return this.originalProvider.removeListener(eventName, listener);
-                }
-                return this;
-            }
+            async send(method, params) { return this.request({ method, params }); }
+            on(eventName, listener) { if (this.originalProvider.on) return this.originalProvider.on(eventName, listener); return this; }
+            removeListener(eventName, listener) { if (this.originalProvider.removeListener) return this.originalProvider.removeListener(eventName, listener); return this; }
         }
-        
-        // Create resilient RPC provider with fallbacks
+
         async function createResilientRPCProvider() {
             for (const rpcUrl of BASE_RPC_ENDPOINTS) {
                 try {
@@ -265,475 +218,209 @@
                     await testProvider.getNetwork();
                     console.log('✅ Connected to RPC:', rpcUrl);
                     return testProvider;
-                } catch (error) {
-                    console.log('❌ RPC failed:', rpcUrl, error.message);
-                    continue;
-                }
+                } catch { continue; }
             }
             throw new Error('All RPC endpoints failed');
         }
-        
-        // Initialize everything 
-        window.addEventListener('load', function() {
-            console.log('🎲 Fast Dice Game Loading...');
-            
-            setTimeout(async () => {
-                console.log('Game initialized successfully');
-                document.getElementById('contract-address-display').textContent = CONTRACT_ADDRESS;
-                
-                // Initialize read-only provider with fallbacks
-                await initReadOnlyProvider();
-                
-                // Wait for Farcaster SDK
-                await waitForFarcasterSDK();
-                
-            }, 200);
+
+        window.addEventListener('load', async function() {
+            document.getElementById('contract-address-display').textContent = CONTRACT_ADDRESS;
+            await initReadOnlyProvider();
+            await waitForFarcasterSDK();
         });
-        
-        // Wait for Farcaster SDK
+
         async function waitForFarcasterSDK() {
             let attempts = 0;
             const maxAttempts = 50;
-            
-            const checkSDK = () => {
-                if (window.sdk && window.sdk.actions) {
-                    farcasterSdk = window.sdk;
-                    console.log('✅ Farcaster SDK found!');
-                    farcasterSdk.actions.ready({ disableNativeGestures: true });
-                    return true;
-                }
-                return false;
-            };
-            
+            const checkSDK = () => { if (window.sdk && window.sdk.actions) { farcasterSdk = window.sdk; farcasterSdk.actions.ready({ disableNativeGestures: true }); return true; } return false; };
             if (checkSDK()) return;
-            
-            return new Promise((resolve) => {
+            return new Promise(resolve => {
                 const interval = setInterval(() => {
                     attempts++;
-                    if (checkSDK() || attempts >= maxAttempts) {
-                        clearInterval(interval);
-                        if (attempts >= maxAttempts) {
-                            console.warn('⚠️ Farcaster SDK not found after waiting');
-                        }
-                        resolve();
-                    }
+                    if (checkSDK() || attempts >= maxAttempts) { clearInterval(interval); resolve(); }
                 }, 100);
             });
         }
-        
-        // Initialize read-only provider with resilience
+
         async function initReadOnlyProvider() {
             try {
                 readOnlyProvider = await createResilientRPCProvider();
-                console.log('✅ Read-only provider connected');
                 await loadInitialData();
-            } catch (error) {
-                console.error('❌ Failed to initialize read-only provider:', error);
-                showStatus('⚠️ Unable to load contract data', 'info');
-            }
+            } catch (error) { console.error(error); showStatus('⚠️ Unable to load contract data', 'info'); }
         }
-        
-        // Load initial contract data with maximum error handling
+
         async function loadInitialData() {
             if (!readOnlyProvider) return;
-            
             try {
                 const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider);
-                
-                // Load each piece of data separately with individual error handling
-                const loadWithFallback = async (fnName, fallback = '0') => {
-                    try {
-                        return await readOnlyContract[fnName]();
-                    } catch (error) {
-                        console.error(`❌ Failed to load ${fnName}:`, error);
-                        return fallback;
-                    }
-                };
-                
-                // Load all data with fallbacks
-                const [gamesResult, winsResult, winRateResult] = await Promise.allSettled([
-                    loadWithFallback('getGameStats'),
-                    Promise.resolve(['0', '0', '0']), // fallback for destructuring
-                    Promise.resolve(['0', '0', '0'])  // fallback for destructuring
+                const [gamesResult, balanceResult, prizesResult] = await Promise.all([
+                    readOnlyContract.getGameStats().catch(() => [0,0,0]),
+                    readOnlyContract.getContractBalance().catch(() => 0),
+                    readOnlyContract.getAvailablePrizes().catch(() => 0)
                 ]);
-                
-                const balanceResult = await loadWithFallback('getContractBalance', '0');
-                const prizesResult = await loadWithFallback('getAvailablePrizes', '0');
-                
-                // Extract values safely
-                let games = '0', wins = '0', winRate = '0';
-                if (gamesResult.status === 'fulfilled' && Array.isArray(gamesResult.value)) {
-                    [games, wins, winRate] = gamesResult.value.map(v => v.toString());
-                }
-                
-                const balance = balanceResult !== '0' ? ethers.utils.formatUnits(balanceResult, 6) : '0';
+                const [games, wins, winRate] = gamesResult.map(v => v.toString());
+                const balance = ethers.utils.formatUnits(balanceResult, 6);
                 const prizes = prizesResult.toString();
-                
-                // Update UI safely
                 document.getElementById('total-games').textContent = games;
                 document.getElementById('total-wins').textContent = wins;
-                document.getElementById('win-rate').textContent = winRate + '%';
+                document.getElementById('win-rate').textContent = winRate+'%';
                 document.getElementById('contract-balance').textContent = `${balance} USDC`;
                 document.getElementById('available-prizes').textContent = `Available prizes: ${prizes}`;
-                
-                console.log('✅ Initial data loaded:', { games, wins, winRate, balance, prizes });
-                
-            } catch (error) {
-                console.error('❌ Failed to load initial data:', error);
-                // Set default values
-                document.getElementById('total-games').textContent = '0';
-                document.getElementById('total-wins').textContent = '0';
-                document.getElementById('win-rate').textContent = '0%';
-                document.getElementById('contract-balance').textContent = 'Unavailable';
-                document.getElementById('available-prizes').textContent = 'Loading failed';
-            }
+            } catch (error) { console.error(error); }
         }
-        
-        // Enhanced wallet connection with complete compatibility
+
         async function connectWallet() {
             try {
-                console.log('🔌 Starting wallet connection...');
-                
-                // Try Farcaster wallet first if available
                 if (farcasterSdk && farcasterSdk.wallet) {
-                    try {
-                        showStatus('🔌 Connecting Farcaster wallet...', 'info');
-                        console.log('🎯 Attempting Farcaster wallet connection...');
-                        
-                        const rawProvider = await farcasterSdk.wallet.getEthereumProvider();
-                        
-                        if (rawProvider) {
-                            console.log('✅ Raw Farcaster provider obtained');
-                            
-                            // Wrap provider for full compatibility
-                            const wrappedProvider = new FarcasterProviderWrapper(rawProvider);
-                            
-                            // Create ethers provider with enhanced compatibility
-                            provider = new ethers.providers.Web3Provider(wrappedProvider, {
-                                name: 'base',
-                                chainId: BASE_MAINNET_CHAIN_ID
-                            });
-                            
-                            // Override problematic methods
-                            provider.detectNetwork = async () => ({
-                                name: 'base',
-                                chainId: BASE_MAINNET_CHAIN_ID
-                            });
-                            
-                            signer = provider.getSigner();
-                            
-                            // Get address with retry logic
-                            let addressAttempts = 0;
-                            while (addressAttempts < 3) {
-                                try {
-                                    userAddress = await signer.getAddress();
-                                    break;
-                                } catch (addrError) {
-                                    console.log(`Address attempt ${addressAttempts + 1} failed:`, addrError.message);
-                                    addressAttempts++;
-                                    if (addressAttempts === 3) throw addrError;
-                                    await new Promise(resolve => setTimeout(resolve, 1000));
-                                }
-                            }
-                            
-                            console.log('✅ Farcaster wallet connected:', userAddress);
-                            
-                            // Create contract with enhanced error handling
-                            contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-                            
-                            // Override contract methods for better compatibility
-                            const originalPlay = contract.play;
-                            contract.play = async function(chosenNumber) {
-                                try {
-                                    return await originalPlay.call(this, chosenNumber);
-                                } catch (error) {
-                                    console.error('Contract play error:', error);
-                                    throw error;
-                                }
-                            };
-                            
-                            updateWalletUI('Farcaster');
-                            await checkCooldown();
-                            
-                            showStatus('✅ Farcaster wallet connected successfully!', 'success');
-                            return;
-                        }
-                    } catch (farcasterError) {
-                        console.error('❌ Farcaster wallet failed:', farcasterError);
-                        showStatus('⚠️ Farcaster wallet unavailable. Trying MetaMask...', 'info');
+                    const rawProvider = await farcasterSdk.wallet.getEthereumProvider();
+                    if (rawProvider) {
+                        const wrappedProvider = new FarcasterProviderWrapper(rawProvider);
+                        provider = new ethers.providers.Web3Provider(wrappedProvider, { name:'base', chainId:BASE_MAINNET_CHAIN_ID });
+                        provider.detectNetwork = async () => ({ name:'base', chainId:BASE_MAINNET_CHAIN_ID });
+                        signer = provider.getSigner();
+                        userAddress = await signer.getAddress();
+                        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                        // Fix for sending transaction
+                        contract.play = async function(chosenNumber) { return await this.connect(signer).play(chosenNumber); };
+                        updateWalletUI('Farcaster');
+                        await checkCooldown();
+                        showStatus('✅ Farcaster wallet connected!', 'success');
+                        return;
                     }
                 }
-                
-                // Fallback to MetaMask
-                console.log('🦊 Trying MetaMask fallback...');
-                if (typeof window.ethereum === 'undefined') {
-                    showStatus('❌ No wallet found! Please install MetaMask or open in Farcaster.', 'error');
-                    return;
-                }
-                
-                showStatus('🔌 Connecting MetaMask...', 'info');
-                
+                if (typeof window.ethereum === 'undefined') { showStatus('❌ No wallet found!', 'error'); return; }
                 await window.ethereum.request({ method: 'eth_requestAccounts' });
                 provider = new ethers.providers.Web3Provider(window.ethereum);
                 signer = provider.getSigner();
                 userAddress = await signer.getAddress();
-                
-                // Check and switch network
                 const network = await provider.getNetwork();
                 if (network.chainId !== BASE_MAINNET_CHAIN_ID) {
-                    showStatus('🔄 Switching to Base Mainnet...', 'info');
-                    try {
-                        await window.ethereum.request({
-                            method: 'wallet_switchEthereumChain',
-                            params: [{ chainId: '0x2105' }]
-                        });
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                    } catch (switchError) {
-                        showStatus('❌ Please switch to Base Mainnet network', 'error');
-                        throw switchError;
-                    }
+                    await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{ chainId:'0x2105' }] });
                 }
-                
                 contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                contract.play = async function(chosenNumber) { return await this.connect(signer).play(chosenNumber); };
                 updateWalletUI('MetaMask');
                 await checkCooldown();
-                
-                showStatus('✅ MetaMask connected successfully!', 'success');
-                
-            } catch (error) {
-                console.error('❌ Wallet connection failed:', error);
-                showStatus('❌ Failed to connect: ' + (error.message || 'Unknown error'), 'error');
-            }
+                showStatus('✅ MetaMask connected!', 'success');
+            } catch (error) { console.error(error); showStatus('❌ Failed to connect: '+(error.message||'Unknown'), 'error'); }
         }
-        
-        // Update wallet UI
-        function updateWalletUI(walletType = 'Wallet') {
-            document.getElementById('connect-btn').style.display = 'none';
-            document.getElementById('wallet-connected').style.display = 'block';
-            document.getElementById('wallet-address').textContent = 
-                userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : 'Unknown';
-            document.getElementById('game-section').style.display = 'block';
-            
-            const statusElement = document.querySelector('#wallet-connected p');
-            if (statusElement) {
-                statusElement.textContent = `✅ ${walletType} Connected`;
-            }
+
+        function updateWalletUI(walletType='Wallet') {
+            document.getElementById('connect-btn').style.display='none';
+            document.getElementById('wallet-connected').style.display='block';
+            document.getElementById('wallet-address').textContent = userAddress ? `${userAddress.slice(0,6)}...${userAddress.slice(-4)}`:'Unknown';
+            document.getElementById('game-section').style.display='block';
+            document.querySelector('#wallet-connected p').textContent = `✅ ${walletType} Connected`;
         }
-        
+
         function selectNumber(number) {
-            selectedChoice = number;
-            
-            document.querySelectorAll('.dice-btn').forEach(btn => {
-                btn.classList.remove('dice-glow', 'ring-4', 'ring-yellow-400');
-            });
-            
-            event.target.classList.add('dice-glow', 'ring-4', 'ring-yellow-400');
-            
-            document.getElementById('play-btn').disabled = false;
-            document.getElementById('play-btn').textContent = `🎲 Roll Dice: ${number}`;
-            
-            console.log('🎯 Selected:', number);
+            selectedChoice=number;
+            document.querySelectorAll('.dice-btn').forEach(btn=>btn.classList.remove('dice-glow','ring-4','ring-yellow-400'));
+            event.target.classList.add('dice-glow','ring-4','ring-yellow-400');
+            document.getElementById('play-btn').disabled=false;
+            document.getElementById('play-btn').textContent=`🎲 Roll Dice: ${number}`;
         }
-        
+
         async function playGame() {
-            if (!selectedChoice || !userAddress || !contract) return;
-            
+            if(!selectedChoice || !userAddress || !contract) return;
             try {
                 showStatus('🎲 Rolling dice...', 'info');
-                document.getElementById('play-btn').disabled = true;
-                document.getElementById('play-btn').textContent = '🎲 Rolling...';
-                
-                // Enhanced transaction sending with retry logic
-                let tx;
-                let attempts = 0;
-                const maxAttempts = 3;
-                
-                while (attempts < maxAttempts) {
-                    try {
-                        tx = await contract.play(selectedChoice);
-                        break;
-                    } catch (txError) {
-                        attempts++;
-                        console.log(`Transaction attempt ${attempts} failed:`, txError.message);
-                        
-                        if (attempts === maxAttempts) {
-                            throw txError;
-                        }
-                        
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                    }
+                document.getElementById('play-btn').disabled=true;
+                document.getElementById('play-btn').textContent='🎲 Rolling...';
+                let tx, attempts=0;
+                while(attempts<3){
+                    try { tx = await contract.play(selectedChoice); break; } 
+                    catch(e){ attempts++; if(attempts===3)throw e; await new Promise(r=>setTimeout(r,1000)); }
                 }
-                
-                console.log('✅ Transaction sent:', tx.hash);
-                showStatus('⏳ Transaction sent, waiting for confirmation...', 'info');
-                
+                showStatus('⏳ Transaction sent, waiting confirmation...', 'info');
                 const receipt = await tx.wait();
-                console.log('✅ Transaction confirmed:', receipt.transactionHash);
-                
-                // Parse game result
-                const gameEvent = receipt.events?.find(event => event.event === 'GamePlayed');
-                
-                if (gameEvent) {
+                const gameEvent = receipt.events?.find(e=>e.event==='GamePlayed');
+                if(gameEvent){
                     const [player, chosenNumber, rolledNumber, won] = gameEvent.args;
                     await showGameResult(chosenNumber.toNumber(), rolledNumber.toNumber(), won);
-                } else {
-                    showStatus('⚠️ Game completed but result unclear', 'warning');
-                }
-                
+                } else showStatus('⚠️ Game result unclear', 'warning');
                 await loadInitialData();
                 await checkCooldown();
-                
             } catch (error) {
-                console.error('❌ Game error:', error);
-                
-                if (error.message.includes('Wait 10 seconds') || error.message.includes('Cooldown')) {
-                    showStatus('⏱️ Wait 10 seconds between games!', 'error');
-                    await checkCooldown();
-                } else if (error.message.includes('Insufficient funds')) {
-                    showStatus('💰 Contract has insufficient USDC for prizes!', 'error');
-                } else if (error.message.includes('rejected') || error.message.includes('denied')) {
-                    showStatus('❌ Transaction rejected by user', 'error');
-                } else {
-                    showStatus('❌ Game failed: ' + (error.message || 'Unknown error'), 'error');
-                }
-                
-                document.getElementById('play-btn').disabled = false;
-                document.getElementById('play-btn').textContent = `🎲 Roll Dice: ${selectedChoice}`;
+                console.error(error);
+                showStatus('❌ '+(error.message||'Game failed'), 'error');
+                document.getElementById('play-btn').disabled=false;
+                document.getElementById('play-btn').textContent=`🎲 Roll Dice: ${selectedChoice}`;
             }
         }
-        
+
         async function showGameResult(chosenNumber, rolledNumber, won) {
-            document.getElementById('game-section').style.display = 'none';
-            document.getElementById('result-section').style.display = 'block';
-            
-            const resultCard = document.getElementById('result-card');
-            const resultIcon = document.getElementById('result-icon');
-            const resultTitle = document.getElementById('result-title');
-            const prizeInfo = document.getElementById('prize-info');
-            
-            document.getElementById('user-choice').innerHTML = `${chosenNumber}<br>${diceSymbols[chosenNumber-1]}`;
-            document.getElementById('dice-result').innerHTML = `${rolledNumber}<br>${diceSymbols[rolledNumber-1]}`;
-            
-            if (won) {
-                resultCard.className = 'winner-animation bg-green-400/20 border-2 border-green-400 rounded-2xl p-8 mb-6';
-                resultIcon.textContent = '🎉';
-                resultTitle.innerHTML = '<span class="text-green-300">JACKPOT! YOU WON!</span>';
-                prizeInfo.innerHTML = `
-                    <div class="bg-yellow-400/20 border border-yellow-400/40 rounded-xl p-4">
-                        <p class="text-yellow-300 font-bold text-lg">🏆 Prize: 0.01 USDC</p>
-                        <p class="text-white/80 text-sm mt-1">Sent to your wallet!</p>
-                    </div>
-                `;
+            document.getElementById('game-section').style.display='none';
+            document.getElementById('result-section').style.display='block';
+            const resultCard=document.getElementById('result-card');
+            const resultIcon=document.getElementById('result-icon');
+            const resultTitle=document.getElementById('result-title');
+            const prizeInfo=document.getElementById('prize-info');
+            document.getElementById('user-choice').innerHTML=`${chosenNumber}<br>${diceSymbols[chosenNumber-1]}`;
+            document.getElementById('dice-result').innerHTML=`${rolledNumber}<br>${diceSymbols[rolledNumber-1]}`;
+            if(won){
+                resultCard.className='winner-animation bg-green-400/20 border-2 border-green-400 rounded-2xl p-8 mb-6';
+                resultIcon.textContent='🎉';
+                resultTitle.innerHTML='<span class="text-green-300">JACKPOT! YOU WON!</span>';
+                prizeInfo.innerHTML=`<div class="bg-yellow-400/20 border border-yellow-400/40 rounded-xl p-4">
+                    <p class="text-yellow-300 font-bold text-lg">🏆 Prize: 0.01 USDC</p>
+                    <p class="text-white/80 text-sm mt-1">Sent to your wallet!</p>
+                </div>`;
                 showStatus('🎉 Congratulations! You won 0.01 USDC!', 'success');
             } else {
-                resultCard.className = 'bg-red-400/20 border-2 border-red-400 rounded-2xl p-8 mb-6';
-                resultIcon.textContent = '😔';
-                resultTitle.innerHTML = '<span class="text-red-300">Not This Time!</span>';
-                prizeInfo.innerHTML = `
-                    <div class="bg-gray-400/20 border border-gray-400/40 rounded-xl p-4">
-                        <p class="text-gray-300">Better luck next roll!</p>
-                        <p class="text-white/60 text-sm mt-1">Try again in 10 seconds</p>
-                    </div>
-                `;
+                resultCard.className='bg-red-400/20 border-2 border-red-400 rounded-2xl p-8 mb-6';
+                resultIcon.textContent='😔';
+                resultTitle.innerHTML='<span class="text-red-300">Not This Time!</span>';
+                prizeInfo.innerHTML=`<div class="bg-gray-400/20 border border-gray-400/40 rounded-xl p-4">
+                    <p class="text-gray-300">Better luck next roll!</p>
+                    <p class="text-white/60 text-sm mt-1">Try again in 10 seconds</p>
+                </div>`;
                 showStatus('😔 No win this time. Try again in 10 seconds!', 'info');
             }
         }
-        
+
         function resetGame() {
-            document.getElementById('result-section').style.display = 'none';
-            document.getElementById('game-section').style.display = 'block';
-            
-            selectedChoice = 0;
-            document.querySelectorAll('.dice-btn').forEach(btn => {
-                btn.classList.remove('dice-glow', 'ring-4', 'ring-yellow-400');
-            });
-            
-            document.getElementById('play-btn').disabled = true;
-            document.getElementById('play-btn').textContent = 'Select a number first';
-            
+            document.getElementById('result-section').style.display='none';
+            document.getElementById('game-section').style.display='block';
+            selectedChoice=0;
+            document.querySelectorAll('.dice-btn').forEach(btn=>btn.classList.remove('dice-glow','ring-4','ring-yellow-400'));
+            document.getElementById('play-btn').disabled=true;
+            document.getElementById('play-btn').textContent='Select a number first';
             checkCooldown();
         }
-        
+
         async function checkCooldown() {
-            if (!userAddress) return;
-            
-            try {
-                const checkContract = readOnlyProvider ? 
-                    new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider) : 
-                    contract;
-                
-                if (!checkContract) return;
-                
-                const cooldownTime = await checkContract.getCooldown(userAddress);
-                const cooldownSeconds = cooldownTime.toNumber();
-                
-                if (cooldownSeconds > 0) {
-                    document.getElementById('cooldown-section').style.display = 'block';
-                    document.getElementById('game-section').style.display = 'none';
-                    
-                    let remaining = cooldownSeconds;
-                    if (cooldownInterval) clearInterval(cooldownInterval);
-                    
-                    cooldownInterval = setInterval(() => {
-                        document.getElementById('cooldown-timer').textContent = `${remaining}s`;
+            if(!userAddress) return;
+            try{
+                const checkContract=readOnlyProvider ? new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider) : contract;
+                if(!checkContract) return;
+                const cooldownTime=await checkContract.getCooldown(userAddress);
+                let remaining=cooldownTime.toNumber();
+                if(remaining>0){
+                    document.getElementById('cooldown-section').style.display='block';
+                    document.getElementById('game-section').style.display='none';
+                    if(cooldownInterval) clearInterval(cooldownInterval);
+                    cooldownInterval=setInterval(()=>{
+                        document.getElementById('cooldown-timer').textContent=`${remaining}s`;
                         remaining--;
-                        
-                        if (remaining < 0) {
-                            clearInterval(cooldownInterval);
-                            document.getElementById('cooldown-section').style.display = 'none';
-                            document.getElementById('game-section').style.display = 'block';
-                        }
-                    }, 1000);
-                } else {
-                    document.getElementById('cooldown-section').style.display = 'none';
-                    if (cooldownInterval) clearInterval(cooldownInterval);
-                }
-                
-            } catch (error) {
-                console.error('❌ Cooldown check error:', error);
-            }
+                        if(remaining<0){ clearInterval(cooldownInterval); document.getElementById('cooldown-section').style.display='none'; document.getElementById('game-section').style.display='block'; }
+                    },1000);
+                } else { document.getElementById('cooldown-section').style.display='none'; if(cooldownInterval) clearInterval(cooldownInterval); }
+            }catch(e){console.error(e);}
         }
-        
-        function showStatus(message, type = 'info') {
-            const statusDiv = document.getElementById('status-message');
-            const statusText = document.getElementById('status-text');
-            
-            statusText.textContent = message;
-            statusDiv.style.display = 'block';
-            
-            if (type !== 'error') {
-                setTimeout(() => {
-                    statusDiv.style.display = 'none';
-                }, 6000);
-            }
-            
-            console.log(`Status (${type}):`, message);
-        }
-        
-        // Auto-refresh data
-        setInterval(() => {
-            if (readOnlyProvider) {
-                loadInitialData();
-            }
-        }, 30000);
-        
-        // Cleanup
-        window.addEventListener('beforeunload', () => {
-            if (cooldownInterval) clearInterval(cooldownInterval);
-        });
+
+        function showStatus(message,type='info'){ const statusDiv=document.getElementById('status-message'); const statusText=document.getElementById('status-text'); statusText.textContent=message; statusDiv.style.display='block'; if(type!=='error')setTimeout(()=>{statusDiv.style.display='none';},6000); }
+
+        setInterval(()=>{ if(readOnlyProvider) loadInitialData(); },30000);
+        window.addEventListener('beforeunload',()=>{ if(cooldownInterval) clearInterval(cooldownInterval); });
     </script>
 
-    <!-- Farcaster SDK -->
     <script type="module">
-        try {
+        try{
             const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk');
             window.sdk = sdk;
             await sdk.actions.ready({ disableNativeGestures: true });
-            console.log('✅ Farcaster SDK initialized');
-        } catch (error) {
-            console.error('❌ Farcaster SDK failed:', error);
-        }
+        }catch(e){ console.error('Farcaster SDK failed:', e); }
     </script>
-
 </body>
 </html>
