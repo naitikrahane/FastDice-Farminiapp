@@ -34,13 +34,13 @@
             
             <!-- Wallet Section -->
             <div id="wallet-section" class="text-center mb-8">
-                <button id="connect-btn" onclick="connectFarcasterWallet()" 
+                <button id="connect-btn" onclick="connectWallet()" 
                         class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-xl">
-                    <span class="mr-2">🔗</span> Connect Farcaster Wallet
+                    <span class="mr-2">🔗</span> Connect Wallet
                 </button>
                 
                 <div id="wallet-connected" style="display: none;" class="bg-green-500/20 border border-green-400/30 rounded-2xl p-4 mt-4">
-                    <p class="text-green-300 font-semibold mb-2">✅ Farcaster Wallet Connected</p>
+                    <p class="text-green-300 font-semibold mb-2">✅ Wallet Connected</p>
                     <p id="wallet-address" class="text-white/70 text-sm font-mono"></p>
                 </div>
             </div>
@@ -240,33 +240,84 @@
             }, 200);
         });
         
-        // FIXED: Use Farcaster SDK wallet instead of MetaMask
-        async function connectFarcasterWallet() {
+        // FIXED: Use correct Farcaster SDK wallet API from documentation
+        async function connectWallet() {
             try {
-                if (!farcasterSdk) {
-                    showStatus('❌ Farcaster SDK not available. Please open in Farcaster app.', 'error');
+                // First try Farcaster SDK wallet if available
+                if (farcasterSdk && farcasterSdk.wallet) {
+                    try {
+                        showStatus('🔌 Connecting Farcaster wallet...', 'info');
+                        
+                        // Use the correct API: sdk.wallet.getEthereumProvider()
+                        const walletProvider = await farcasterSdk.wallet.getEthereumProvider();
+                        
+                        if (walletProvider) {
+                            provider = new ethers.providers.Web3Provider(walletProvider);
+                            signer = provider.getSigner();
+                            userAddress = await signer.getAddress();
+                            
+                            // Check network
+                            const network = await provider.getNetwork();
+                            if (network.chainId !== BASE_MAINNET_CHAIN_ID) {
+                                showStatus('❌ Please switch to Base Mainnet in your wallet', 'error');
+                                return;
+                            }
+                            
+                            // Setup contract
+                            contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                            
+                            // Update UI
+                            document.getElementById('connect-btn').style.display = 'none';
+                            document.getElementById('wallet-connected').style.display = 'block';
+                            document.getElementById('wallet-address').textContent = 
+                                userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
+                            
+                            // Show game sections
+                            document.getElementById('game-stats').style.display = 'grid';
+                            document.getElementById('contract-info').style.display = 'block';
+                            document.getElementById('game-section').style.display = 'block';
+                            
+                            // Load game data
+                            await updateGameStats();
+                            await updateContractInfo();
+                            await checkCooldown();
+                            
+                            showStatus('✅ Farcaster wallet connected!', 'success');
+                            return;
+                        }
+                    } catch (farcasterError) {
+                        console.log('Farcaster wallet not available, trying MetaMask:', farcasterError);
+                    }
+                }
+                
+                // Fallback to MetaMask/window.ethereum
+                if (typeof window.ethereum === 'undefined') {
+                    showStatus('❌ No wallet found! Please install MetaMask or open in Farcaster.', 'error');
                     return;
                 }
                 
-                showStatus('🔌 Connecting Farcaster wallet...', 'info');
+                showStatus('🔌 Connecting wallet...', 'info');
                 
-                // Use Farcaster SDK wallet
-                const walletProvider = await farcasterSdk.wallet.ethProvider();
-                if (!walletProvider) {
-                    showStatus('❌ Farcaster wallet not available', 'error');
-                    return;
-                }
-                
-                // Setup provider with Farcaster wallet
-                provider = new ethers.providers.Web3Provider(walletProvider);
+                // Request wallet connection
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                provider = new ethers.providers.Web3Provider(window.ethereum);
                 signer = provider.getSigner();
                 userAddress = await signer.getAddress();
                 
-                // Check if we're on Base Mainnet
+                // Check network
                 const network = await provider.getNetwork();
                 if (network.chainId !== BASE_MAINNET_CHAIN_ID) {
-                    showStatus('❌ Please switch to Base Mainnet in Farcaster wallet', 'error');
-                    return;
+                    showStatus('🔄 Switching to Base Mainnet...', 'info');
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: '0x2105' }]
+                        });
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    } catch (error) {
+                        showStatus('❌ Please switch to Base Mainnet network', 'error');
+                        throw error;
+                    }
                 }
                 
                 // Setup contract
@@ -288,11 +339,11 @@
                 await updateContractInfo();
                 await checkCooldown();
                 
-                showStatus('✅ Farcaster wallet connected! Choose your lucky number.', 'success');
+                showStatus('✅ Wallet connected! Choose your lucky number.', 'success');
                 
             } catch (error) {
-                console.error('Farcaster wallet connection error:', error);
-                showStatus('❌ Failed to connect Farcaster wallet: ' + error.message, 'error');
+                console.error('Wallet connection error:', error);
+                showStatus('❌ Failed to connect wallet: ' + error.message, 'error');
             }
         }
         
@@ -321,7 +372,7 @@
                 document.getElementById('play-btn').disabled = true;
                 document.getElementById('play-btn').textContent = '🎲 Rolling...';
                 
-                // Send transaction using Farcaster wallet
+                // Send transaction
                 const tx = await contract.play(selectedChoice);
                 showStatus('⏳ Transaction sent, waiting for confirmation...', 'info');
                 
