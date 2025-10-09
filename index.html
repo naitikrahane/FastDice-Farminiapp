@@ -152,47 +152,9 @@
     </div>
 
     <script>
-        // Farcaster Context
-        let farcasterContext = {
-            fid: null,
-            username: null,
-            address: null,
-            verified: false
-        };
-
-        // Global SDK reference
-        let farcasterSdk = null;
-
-        function initFarcaster() {
-            console.log('Initializing Farcaster context...');
-            
-            const urlParams = new URLSearchParams(window.location.search);
-            const fid = urlParams.get('fid');
-            const username = urlParams.get('username');
-            
-            if (fid) {
-                farcasterContext.fid = fid;
-                farcasterContext.username = username || `User #${fid}`;
-                farcasterContext.verified = true;
-            }
-            window.addEventListener('message', (event) => {
-                if (event.data.type === 'farcaster-frame') {
-                    console.log('Received Farcaster data:', event.data);
-                    farcasterContext = {
-                        fid: event.data.fid,
-                        username: event.data.username,
-                        address: event.data.address,
-                        verified: true
-                    };
-                }
-            });
-        }
-
         // Contract Configuration
         const CONTRACT_ADDRESS = "0xeA3F62030029DD99E487f6A3c415dc31e03337FD";
         const BASE_MAINNET_CHAIN_ID = 8453;
-        
-        // Use Base's official RPC
         const BASE_RPC_URL = 'https://mainnet.base.org';
         
         // Contract ABI
@@ -209,56 +171,84 @@
         
         // Game State
         let provider, signer, contract, userAddress;
-        let readOnlyProvider; // For reading contract data
+        let readOnlyProvider;
         let selectedChoice = 0;
         let cooldownInterval;
+        let farcasterSdk = null;
         
         // Dice symbols
         const diceSymbols = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
         
+        // Check if running in Farcaster Mini App
+        function isInFarcaster() {
+            return typeof window !== 'undefined' && (
+                window.parent !== window || // In iframe
+                window.location !== window.parent.location || // In frame
+                navigator.userAgent.includes('Farcaster') || // Farcaster browser
+                window.location.href.includes('farcaster') // Farcaster domain
+            );
+        }
+        
         // Initialize everything 
         window.addEventListener('load', function() {
             console.log('Page loaded');
-            initFarcaster();
+            console.log('Is in Farcaster:', isInFarcaster());
             
             setTimeout(async () => {
                 console.log('Game initialized successfully');
-                document.getElementById('contract-address-display').textContent = CONTRACT_ADDRESS || 'Please update contract address';
+                document.getElementById('contract-address-display').textContent = CONTRACT_ADDRESS;
                 
-                // Initialize read-only provider immediately
+                // Initialize read-only provider
                 await initReadOnlyProvider();
                 
-                // Notify Farcaster SDK that app is ready 
-                if (typeof sdk !== 'undefined' && sdk.actions && sdk.actions.ready) {
-                    farcasterSdk = sdk;
-                    sdk.actions.ready();
-                    console.log('Farcaster SDK ready() called');
-                } else {
-                    console.warn('Farcaster SDK not available');
-                    // Fallback - try accessing global sdk after delay 
-                    setTimeout(() => {
-                        if (window.sdk && window.sdk.actions && window.sdk.actions.ready) {
-                            farcasterSdk = window.sdk;
-                            window.sdk.actions.ready();
-                            console.log('Farcaster SDK ready() called (delayed)');
-                        }
-                    }, 500);
-                }
+                // Wait for SDK to be available
+                await waitForSDK();
+                
             }, 200);
         });
         
-        // Initialize read-only provider for contract reading (ALWAYS AVAILABLE)
+        // Wait for Farcaster SDK to be available
+        async function waitForSDK() {
+            let attempts = 0;
+            const maxAttempts = 50; // 5 seconds max wait
+            
+            const checkSDK = () => {
+                if (window.sdk && window.sdk.actions) {
+                    farcasterSdk = window.sdk;
+                    console.log('✅ Farcaster SDK found!');
+                    farcasterSdk.actions.ready({ disableNativeGestures: true });
+                    return true;
+                }
+                return false;
+            };
+            
+            // Check immediately
+            if (checkSDK()) return;
+            
+            // Poll for SDK availability
+            return new Promise((resolve) => {
+                const interval = setInterval(() => {
+                    attempts++;
+                    if (checkSDK() || attempts >= maxAttempts) {
+                        clearInterval(interval);
+                        if (attempts >= maxAttempts) {
+                            console.warn('⚠️ Farcaster SDK not found after waiting');
+                        }
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
+        
+        // Initialize read-only provider
         async function initReadOnlyProvider() {
             try {
                 readOnlyProvider = new ethers.providers.JsonRpcProvider(BASE_RPC_URL);
-                await readOnlyProvider.getNetwork(); // Test connection
+                await readOnlyProvider.getNetwork();
                 console.log('Read-only provider connected');
-                
-                // Load initial contract data immediately
                 await loadInitialData();
             } catch (error) {
                 console.error('Failed to initialize read-only provider:', error);
-                showStatus('⚠️ Unable to load contract data', 'info');
             }
         }
         
@@ -269,9 +259,8 @@
             try {
                 const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider);
                 
-                // Load stats and balance with error handling for each call
-                let games = '0', wins = '0', winRate = '0';
-                let balance = '0', prizes = '0';
+                // Load with error handling
+                let games = '0', wins = '0', winRate = '0', balance = '0', prizes = '0';
                 
                 try {
                     const [gamesResult, winsResult, winRateResult] = await readOnlyContract.getGameStats();
@@ -285,15 +274,10 @@
                 try {
                     const balanceResult = await readOnlyContract.getContractBalance();
                     balance = ethers.utils.formatUnits(balanceResult, 6);
-                } catch (error) {
-                    console.error('Failed to load contract balance:', error);
-                }
-                
-                try {
                     const prizesResult = await readOnlyContract.getAvailablePrizes();
                     prizes = prizesResult.toString();
                 } catch (error) {
-                    console.error('Failed to load available prizes:', error);
+                    console.error('Failed to load balance/prizes:', error);
                 }
                 
                 // Update UI
@@ -303,72 +287,64 @@
                 document.getElementById('contract-balance').textContent = `${balance} USDC`;
                 document.getElementById('available-prizes').textContent = `Available prizes: ${prizes}`;
                 
-                console.log('Initial data loaded successfully');
+                console.log('✅ Initial data loaded');
                 
             } catch (error) {
                 console.error('Failed to load initial data:', error);
-                document.getElementById('contract-balance').textContent = 'Unavailable';
-                document.getElementById('available-prizes').textContent = 'Loading failed';
             }
         }
         
-        // Connect wallet with limited method support handling
+        // Connect wallet with proper Farcaster detection
         async function connectWallet() {
             try {
-                // First try Farcaster SDK wallet if available
-                if (farcasterSdk && farcasterSdk.wallet) {
+                console.log('Attempting wallet connection...');
+                console.log('SDK available:', !!farcasterSdk);
+                console.log('In Farcaster:', isInFarcaster());
+                
+                // If we're in Farcaster and have SDK, try Farcaster wallet first
+                if (isInFarcaster() && farcasterSdk && farcasterSdk.wallet) {
                     try {
                         showStatus('🔌 Connecting Farcaster wallet...', 'info');
+                        console.log('Trying Farcaster wallet...');
                         
                         const walletProvider = await farcasterSdk.wallet.getEthereumProvider();
+                        console.log('Farcaster provider:', !!walletProvider);
                         
                         if (walletProvider) {
-                            // Create a limited provider wrapper that only supports essential methods
-                            const limitedProvider = {
-                                ...walletProvider,
-                                // Override methods that might not be supported
-                                getNetwork: async () => ({ chainId: BASE_MAINNET_CHAIN_ID, name: 'base' }),
-                                send: walletProvider.request || walletProvider.send,
-                                request: walletProvider.request || walletProvider.send
-                            };
-                            
-                            provider = new ethers.providers.Web3Provider(limitedProvider);
+                            provider = new ethers.providers.Web3Provider(walletProvider);
                             signer = provider.getSigner();
                             userAddress = await signer.getAddress();
                             
-                            // Setup contract with signer for transactions
+                            console.log('✅ Farcaster wallet connected:', userAddress);
+                            
+                            // Setup contract
                             contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
                             
                             // Update UI
-                            document.getElementById('connect-btn').style.display = 'none';
-                            document.getElementById('wallet-connected').style.display = 'block';
-                            document.getElementById('wallet-address').textContent = 
-                                userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
-                            
-                            // Show game sections
-                            document.getElementById('game-section').style.display = 'block';
-                            
-                            // Load user-specific data
+                            updateWalletUI();
                             await checkCooldown();
                             
                             showStatus('✅ Farcaster wallet connected!', 'success');
                             return;
                         }
                     } catch (farcasterError) {
-                        console.log('Farcaster wallet error:', farcasterError);
-                        showStatus('⚠️ Farcaster wallet connection failed. Using fallback.', 'info');
+                        console.error('Farcaster wallet failed:', farcasterError);
+                        showStatus('⚠️ Farcaster wallet unavailable. Trying MetaMask...', 'info');
                     }
                 }
                 
-                // Fallback to MetaMask/window.ethereum
+                // Fallback to MetaMask
+                console.log('Trying MetaMask fallback...');
                 if (typeof window.ethereum === 'undefined') {
-                    showStatus('❌ No wallet found! Please install MetaMask or open in Farcaster.', 'error');
+                    const message = isInFarcaster() ? 
+                        '❌ Farcaster wallet not available. Please update your Farcaster app.' :
+                        '❌ No wallet found! Please install MetaMask or open in Farcaster.';
+                    showStatus(message, 'error');
                     return;
                 }
                 
-                showStatus('🔌 Connecting wallet...', 'info');
+                showStatus('🔌 Connecting MetaMask...', 'info');
                 
-                // Request wallet connection
                 await window.ethereum.request({ method: 'eth_requestAccounts' });
                 provider = new ethers.providers.Web3Provider(window.ethereum);
                 signer = provider.getSigner();
@@ -390,40 +366,36 @@
                     }
                 }
                 
-                // Setup contract
                 contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-                
-                // Update UI
-                document.getElementById('connect-btn').style.display = 'none';
-                document.getElementById('wallet-connected').style.display = 'block';
-                document.getElementById('wallet-address').textContent = 
-                    userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
-                
-                // Show game sections
-                document.getElementById('game-section').style.display = 'block';
-                
-                // Load user-specific data
+                updateWalletUI();
                 await checkCooldown();
                 
-                showStatus('✅ Wallet connected! Choose your lucky number.', 'success');
+                showStatus('✅ MetaMask connected!', 'success');
                 
             } catch (error) {
                 console.error('Wallet connection error:', error);
-                showStatus('❌ Failed to connect wallet: ' + error.message, 'error');
+                showStatus('❌ Failed to connect: ' + error.message, 'error');
             }
+        }
+        
+        // Update wallet UI
+        function updateWalletUI() {
+            document.getElementById('connect-btn').style.display = 'none';
+            document.getElementById('wallet-connected').style.display = 'block';
+            document.getElementById('wallet-address').textContent = 
+                userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
+            document.getElementById('game-section').style.display = 'block';
         }
         
         function selectNumber(number) {
             selectedChoice = number;
             
-            // Update visual selection
             document.querySelectorAll('.dice-btn').forEach(btn => {
                 btn.classList.remove('dice-glow', 'ring-4', 'ring-yellow-400');
             });
             
             event.target.classList.add('dice-glow', 'ring-4', 'ring-yellow-400');
             
-            // Update play button
             document.getElementById('play-btn').disabled = false;
             document.getElementById('play-btn').textContent = `🎲 Roll Dice: ${number}`;
             
@@ -438,15 +410,12 @@
                 document.getElementById('play-btn').disabled = true;
                 document.getElementById('play-btn').textContent = '🎲 Rolling...';
                 
-                // Send transaction
                 const tx = await contract.play(selectedChoice);
                 showStatus('⏳ Transaction sent, waiting for confirmation...', 'info');
                 
-                // Wait for confirmation
                 const receipt = await tx.wait();
                 console.log('Transaction confirmed:', receipt.transactionHash);
                 
-                // Parse events from receipt
                 const gameEvent = receipt.events?.find(event => event.event === 'GamePlayed');
                 
                 if (gameEvent) {
@@ -463,8 +432,7 @@
                     showStatus('⚠️ Game played but result unclear. Check blockchain.', 'warning');
                 }
                 
-                // Update stats and check cooldown
-                await loadInitialData(); // Refresh all data
+                await loadInitialData();
                 await checkCooldown();
                 
             } catch (error) {
@@ -485,7 +453,6 @@
         }
         
         async function showGameResult(chosenNumber, rolledNumber, won) {
-            // Hide game section, show result
             document.getElementById('game-section').style.display = 'none';
             document.getElementById('result-section').style.display = 'block';
             
@@ -523,11 +490,9 @@
         }
         
         function resetGame() {
-            // Reset UI
             document.getElementById('result-section').style.display = 'none';
             document.getElementById('game-section').style.display = 'block';
             
-            // Clear selections
             selectedChoice = 0;
             document.querySelectorAll('.dice-btn').forEach(btn => {
                 btn.classList.remove('dice-glow', 'ring-4', 'ring-yellow-400');
@@ -536,7 +501,6 @@
             document.getElementById('play-btn').disabled = true;
             document.getElementById('play-btn').textContent = 'Select a number first';
             
-            // Check cooldown
             checkCooldown();
         }
         
@@ -544,7 +508,6 @@
             if (!userAddress) return;
             
             try {
-                // Use read-only provider for cooldown check
                 const checkContract = readOnlyProvider ? 
                     new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider) : 
                     contract;
@@ -558,7 +521,6 @@
                     document.getElementById('cooldown-section').style.display = 'block';
                     document.getElementById('game-section').style.display = 'none';
                     
-                    // Start cooldown timer
                     let remaining = cooldownSeconds;
                     cooldownInterval = setInterval(() => {
                         document.getElementById('cooldown-timer').textContent = `${remaining}s`;
@@ -589,7 +551,6 @@
             statusText.textContent = message;
             statusDiv.style.display = 'block';
             
-            // Auto-hide non-error messages
             if (type !== 'error') {
                 setTimeout(() => {
                     statusDiv.style.display = 'none';
@@ -599,7 +560,7 @@
             console.log(`Status (${type}):`, message);
         }
         
-        // Auto-refresh data every 30 seconds
+        // Auto-refresh data
         setInterval(() => {
             if (readOnlyProvider) {
                 loadInitialData();
@@ -607,7 +568,7 @@
         }, 30000);
     </script>
 
-    <!-- Farcaster SDK (Module Import) -->
+    <!-- Farcaster SDK -->
     <script type="module">
         import { sdk } from 'https://esm.sh/@farcaster/miniapp-sdk';
         window.sdk = sdk;
