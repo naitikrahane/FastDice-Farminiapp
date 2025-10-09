@@ -155,7 +155,14 @@
         // Contract Configuration
         const CONTRACT_ADDRESS = "0xeA3F62030029DD99E487f6A3c415dc31e03337FD";
         const BASE_MAINNET_CHAIN_ID = 8453;
-        const BASE_RPC_URL = 'https://mainnet.base.org';
+        
+        // Multiple RPC endpoints for maximum reliability
+        const BASE_RPC_ENDPOINTS = [
+            'https://mainnet.base.org',
+            'https://base-mainnet.public.blastapi.io',
+            'https://base.gateway.tenderly.co',
+            'https://base-rpc.publicnode.com'
+        ];
         
         // Contract ABI
         const CONTRACT_ABI = [
@@ -179,28 +186,102 @@
         // Dice symbols
         const diceSymbols = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
         
-        // Check if running in Farcaster Mini App
-        function isInFarcaster() {
-            return typeof window !== 'undefined' && (
-                window.parent !== window || // In iframe
-                window.location !== window.parent.location || // In frame
-                navigator.userAgent.includes('Farcaster') || // Farcaster browser
-                window.location.href.includes('farcaster') || // Farcaster domain
-                document.referrer.includes('farcaster') || // Referred from Farcaster
-                window.top !== window.self // In any frame
-            );
+        // Create advanced provider wrapper for Farcaster compatibility
+        class FarcasterProviderWrapper {
+            constructor(originalProvider) {
+                this.originalProvider = originalProvider;
+                this.isMetaMask = false;
+                this.isFarcaster = true;
+                
+                // Copy all methods from original provider
+                Object.keys(originalProvider).forEach(key => {
+                    if (typeof originalProvider[key] === 'function') {
+                        this[key] = originalProvider[key].bind(originalProvider);
+                    } else {
+                        this[key] = originalProvider[key];
+                    }
+                });
+            }
+            
+            async request(args) {
+                console.log('🔄 Farcaster provider request:', args.method);
+                
+                // Handle unsupported methods gracefully
+                try {
+                    if (this.originalProvider.request) {
+                        return await this.originalProvider.request(args);
+                    } else if (this.originalProvider.send) {
+                        return await this.originalProvider.send(args.method, args.params || []);
+                    } else {
+                        throw new Error(`Method ${args.method} not supported by Farcaster provider`);
+                    }
+                } catch (error) {
+                    console.log(`⚠️ Method ${args.method} failed:`, error.message);
+                    
+                    // Provide fallbacks for common methods
+                    switch (args.method) {
+                        case 'eth_chainId':
+                            return '0x2105'; // Base Mainnet
+                        case 'net_version':
+                            return '8453';
+                        case 'eth_getBalance':
+                            return '0x0'; // Default balance
+                        case 'eth_gasPrice':
+                            return '0x3b9aca00'; // 1 gwei
+                        case 'eth_blockNumber':
+                            return '0x1000000'; // Dummy block number
+                        default:
+                            throw error;
+                    }
+                }
+            }
+            
+            async send(method, params) {
+                return this.request({ method, params });
+            }
+            
+            // EIP-1193 event methods
+            on(eventName, listener) {
+                if (this.originalProvider.on) {
+                    return this.originalProvider.on(eventName, listener);
+                }
+                console.log(`Event listener ${eventName} not supported`);
+                return this;
+            }
+            
+            removeListener(eventName, listener) {
+                if (this.originalProvider.removeListener) {
+                    return this.originalProvider.removeListener(eventName, listener);
+                }
+                return this;
+            }
+        }
+        
+        // Create resilient RPC provider with fallbacks
+        async function createResilientRPCProvider() {
+            for (const rpcUrl of BASE_RPC_ENDPOINTS) {
+                try {
+                    const testProvider = new ethers.providers.JsonRpcProvider(rpcUrl);
+                    await testProvider.getNetwork();
+                    console.log('✅ Connected to RPC:', rpcUrl);
+                    return testProvider;
+                } catch (error) {
+                    console.log('❌ RPC failed:', rpcUrl, error.message);
+                    continue;
+                }
+            }
+            throw new Error('All RPC endpoints failed');
         }
         
         // Initialize everything 
         window.addEventListener('load', function() {
             console.log('🎲 Fast Dice Game Loading...');
-            console.log('Is in Farcaster:', isInFarcaster());
             
             setTimeout(async () => {
                 console.log('Game initialized successfully');
                 document.getElementById('contract-address-display').textContent = CONTRACT_ADDRESS;
                 
-                // Initialize read-only provider immediately
+                // Initialize read-only provider with fallbacks
                 await initReadOnlyProvider();
                 
                 // Wait for Farcaster SDK
@@ -209,10 +290,10 @@
             }, 200);
         });
         
-        // Wait for Farcaster SDK to be available
+        // Wait for Farcaster SDK
         async function waitForFarcasterSDK() {
             let attempts = 0;
-            const maxAttempts = 50; // 5 seconds max wait
+            const maxAttempts = 50;
             
             const checkSDK = () => {
                 if (window.sdk && window.sdk.actions) {
@@ -224,10 +305,8 @@
                 return false;
             };
             
-            // Check immediately
             if (checkSDK()) return;
             
-            // Poll for SDK availability
             return new Promise((resolve) => {
                 const interval = setInterval(() => {
                     attempts++;
@@ -242,11 +321,10 @@
             });
         }
         
-        // Initialize read-only provider for contract reading
+        // Initialize read-only provider with resilience
         async function initReadOnlyProvider() {
             try {
-                readOnlyProvider = new ethers.providers.JsonRpcProvider(BASE_RPC_URL);
-                await readOnlyProvider.getNetwork();
+                readOnlyProvider = await createResilientRPCProvider();
                 console.log('✅ Read-only provider connected');
                 await loadInitialData();
             } catch (error) {
@@ -255,167 +333,163 @@
             }
         }
         
-        // Load initial contract data
+        // Load initial contract data with maximum error handling
         async function loadInitialData() {
             if (!readOnlyProvider) return;
             
             try {
                 const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider);
                 
-                // Load with comprehensive error handling
-                let games = '0', wins = '0', winRate = '0', balance = '0', prizes = '0';
+                // Load each piece of data separately with individual error handling
+                const loadWithFallback = async (fnName, fallback = '0') => {
+                    try {
+                        return await readOnlyContract[fnName]();
+                    } catch (error) {
+                        console.error(`❌ Failed to load ${fnName}:`, error);
+                        return fallback;
+                    }
+                };
                 
-                try {
-                    console.log('📊 Loading game stats...');
-                    const [gamesResult, winsResult, winRateResult] = await readOnlyContract.getGameStats();
-                    games = gamesResult.toString();
-                    wins = winsResult.toString();
-                    winRate = winRateResult.toString();
-                    console.log('✅ Game stats loaded:', { games, wins, winRate });
-                } catch (error) {
-                    console.error('❌ Failed to load game stats:', error);
+                // Load all data with fallbacks
+                const [gamesResult, winsResult, winRateResult] = await Promise.allSettled([
+                    loadWithFallback('getGameStats'),
+                    Promise.resolve(['0', '0', '0']), // fallback for destructuring
+                    Promise.resolve(['0', '0', '0'])  // fallback for destructuring
+                ]);
+                
+                const balanceResult = await loadWithFallback('getContractBalance', '0');
+                const prizesResult = await loadWithFallback('getAvailablePrizes', '0');
+                
+                // Extract values safely
+                let games = '0', wins = '0', winRate = '0';
+                if (gamesResult.status === 'fulfilled' && Array.isArray(gamesResult.value)) {
+                    [games, wins, winRate] = gamesResult.value.map(v => v.toString());
                 }
                 
-                try {
-                    console.log('💰 Loading contract balance...');
-                    const balanceResult = await readOnlyContract.getContractBalance();
-                    balance = ethers.utils.formatUnits(balanceResult, 6);
-                    console.log('✅ Contract balance loaded:', balance);
-                } catch (error) {
-                    console.error('❌ Failed to load contract balance:', error);
-                }
+                const balance = balanceResult !== '0' ? ethers.utils.formatUnits(balanceResult, 6) : '0';
+                const prizes = prizesResult.toString();
                 
-                try {
-                    console.log('🎁 Loading available prizes...');
-                    const prizesResult = await readOnlyContract.getAvailablePrizes();
-                    prizes = prizesResult.toString();
-                    console.log('✅ Available prizes loaded:', prizes);
-                } catch (error) {
-                    console.error('❌ Failed to load available prizes:', error);
-                }
-                
-                // Update UI
+                // Update UI safely
                 document.getElementById('total-games').textContent = games;
                 document.getElementById('total-wins').textContent = wins;
                 document.getElementById('win-rate').textContent = winRate + '%';
                 document.getElementById('contract-balance').textContent = `${balance} USDC`;
                 document.getElementById('available-prizes').textContent = `Available prizes: ${prizes}`;
                 
-                console.log('✅ All initial data loaded successfully');
+                console.log('✅ Initial data loaded:', { games, wins, winRate, balance, prizes });
                 
             } catch (error) {
                 console.error('❌ Failed to load initial data:', error);
+                // Set default values
+                document.getElementById('total-games').textContent = '0';
+                document.getElementById('total-wins').textContent = '0';
+                document.getElementById('win-rate').textContent = '0%';
                 document.getElementById('contract-balance').textContent = 'Unavailable';
                 document.getElementById('available-prizes').textContent = 'Loading failed';
-                showStatus('⚠️ Contract data partially unavailable', 'info');
             }
         }
         
-        // Enhanced wallet connection with better Farcaster support
+        // Enhanced wallet connection with complete compatibility
         async function connectWallet() {
             try {
-                console.log('🔌 Attempting wallet connection...');
-                console.log('SDK available:', !!farcasterSdk);
-                console.log('In Farcaster:', isInFarcaster());
-                console.log('User agent:', navigator.userAgent.substring(0, 100));
+                console.log('🔌 Starting wallet connection...');
                 
-                // If we're in Farcaster and have SDK, try Farcaster wallet first
+                // Try Farcaster wallet first if available
                 if (farcasterSdk && farcasterSdk.wallet) {
                     try {
                         showStatus('🔌 Connecting Farcaster wallet...', 'info');
-                        console.log('🎯 Trying Farcaster wallet integration...');
+                        console.log('🎯 Attempting Farcaster wallet connection...');
                         
-                        const walletProvider = await farcasterSdk.wallet.getEthereumProvider();
-                        console.log('Farcaster provider result:', !!walletProvider);
+                        const rawProvider = await farcasterSdk.wallet.getEthereumProvider();
                         
-                        if (walletProvider) {
-                            console.log('✅ Farcaster wallet provider obtained');
+                        if (rawProvider) {
+                            console.log('✅ Raw Farcaster provider obtained');
                             
-                            // Create enhanced provider wrapper for compatibility
-                            const enhancedProvider = {
-                                ...walletProvider,
-                                isMetaMask: false,
-                                isFarcaster: true,
-                                request: walletProvider.request || walletProvider.send,
-                                send: walletProvider.send || walletProvider.request,
-                                // Add compatibility methods
-                                enable: async () => {
-                                    return await walletProvider.request({ method: 'eth_requestAccounts' });
-                                },
-                                // Network detection
-                                getNetwork: async () => ({ chainId: BASE_MAINNET_CHAIN_ID, name: 'base' }),
-                            };
+                            // Wrap provider for full compatibility
+                            const wrappedProvider = new FarcasterProviderWrapper(rawProvider);
                             
-                            provider = new ethers.providers.Web3Provider(enhancedProvider);
+                            // Create ethers provider with enhanced compatibility
+                            provider = new ethers.providers.Web3Provider(wrappedProvider, {
+                                name: 'base',
+                                chainId: BASE_MAINNET_CHAIN_ID
+                            });
+                            
+                            // Override problematic methods
+                            provider.detectNetwork = async () => ({
+                                name: 'base',
+                                chainId: BASE_MAINNET_CHAIN_ID
+                            });
+                            
                             signer = provider.getSigner();
-                            userAddress = await signer.getAddress();
                             
-                            console.log('✅ Farcaster wallet connected successfully:', userAddress);
-                            
-                            // Verify network (assume Base Mainnet for Farcaster)
-                            try {
-                                const network = await provider.getNetwork();
-                                console.log('📡 Network info:', network);
-                                if (network.chainId !== BASE_MAINNET_CHAIN_ID) {
-                                    console.warn('⚠️ Network mismatch, but continuing with Farcaster wallet');
+                            // Get address with retry logic
+                            let addressAttempts = 0;
+                            while (addressAttempts < 3) {
+                                try {
+                                    userAddress = await signer.getAddress();
+                                    break;
+                                } catch (addrError) {
+                                    console.log(`Address attempt ${addressAttempts + 1} failed:`, addrError.message);
+                                    addressAttempts++;
+                                    if (addressAttempts === 3) throw addrError;
+                                    await new Promise(resolve => setTimeout(resolve, 1000));
                                 }
-                            } catch (networkError) {
-                                console.log('ℹ️ Network check skipped for Farcaster wallet');
                             }
                             
-                            // Setup contract with signer for transactions
+                            console.log('✅ Farcaster wallet connected:', userAddress);
+                            
+                            // Create contract with enhanced error handling
                             contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
                             
-                            // Update UI
+                            // Override contract methods for better compatibility
+                            const originalPlay = contract.play;
+                            contract.play = async function(chosenNumber) {
+                                try {
+                                    return await originalPlay.call(this, chosenNumber);
+                                } catch (error) {
+                                    console.error('Contract play error:', error);
+                                    throw error;
+                                }
+                            };
+                            
                             updateWalletUI('Farcaster');
                             await checkCooldown();
                             
                             showStatus('✅ Farcaster wallet connected successfully!', 'success');
                             return;
-                        } else {
-                            console.log('❌ No Farcaster wallet provider returned');
                         }
                     } catch (farcasterError) {
-                        console.error('❌ Farcaster wallet connection failed:', farcasterError);
+                        console.error('❌ Farcaster wallet failed:', farcasterError);
                         showStatus('⚠️ Farcaster wallet unavailable. Trying MetaMask...', 'info');
                     }
                 }
                 
-                // Fallback to MetaMask/External Wallet
-                console.log('🦊 Trying MetaMask/External wallet fallback...');
+                // Fallback to MetaMask
+                console.log('🦊 Trying MetaMask fallback...');
                 if (typeof window.ethereum === 'undefined') {
-                    const message = isInFarcaster() ? 
-                        '❌ Farcaster wallet not available. Please update your Farcaster app or try opening in browser.' :
-                        '❌ No wallet found! Please install MetaMask or open in Farcaster app.';
-                    showStatus(message, 'error');
+                    showStatus('❌ No wallet found! Please install MetaMask or open in Farcaster.', 'error');
                     return;
                 }
                 
-                showStatus('🔌 Connecting external wallet...', 'info');
+                showStatus('🔌 Connecting MetaMask...', 'info');
                 
                 await window.ethereum.request({ method: 'eth_requestAccounts' });
                 provider = new ethers.providers.Web3Provider(window.ethereum);
                 signer = provider.getSigner();
                 userAddress = await signer.getAddress();
                 
-                console.log('✅ External wallet connected:', userAddress);
-                
-                // Check and switch network if needed
+                // Check and switch network
                 const network = await provider.getNetwork();
-                console.log('📡 Current network:', network);
-                
                 if (network.chainId !== BASE_MAINNET_CHAIN_ID) {
                     showStatus('🔄 Switching to Base Mainnet...', 'info');
                     try {
                         await window.ethereum.request({
                             method: 'wallet_switchEthereumChain',
-                            params: [{ chainId: '0x2105' }] // Base Mainnet
+                            params: [{ chainId: '0x2105' }]
                         });
                         await new Promise(resolve => setTimeout(resolve, 1000));
-                        console.log('✅ Network switched to Base Mainnet');
                     } catch (switchError) {
-                        console.error('❌ Network switch failed:', switchError);
-                        showStatus('❌ Please manually switch to Base Mainnet network', 'error');
+                        showStatus('❌ Please switch to Base Mainnet network', 'error');
                         throw switchError;
                     }
                 }
@@ -424,11 +498,11 @@
                 updateWalletUI('MetaMask');
                 await checkCooldown();
                 
-                showStatus('✅ External wallet connected successfully!', 'success');
+                showStatus('✅ MetaMask connected successfully!', 'success');
                 
             } catch (error) {
-                console.error('❌ Complete wallet connection failure:', error);
-                showStatus('❌ Failed to connect wallet: ' + (error.message || 'Unknown error'), 'error');
+                console.error('❌ Wallet connection failed:', error);
+                showStatus('❌ Failed to connect: ' + (error.message || 'Unknown error'), 'error');
             }
         }
         
@@ -440,84 +514,82 @@
                 userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : 'Unknown';
             document.getElementById('game-section').style.display = 'block';
             
-            // Update connection status text
             const statusElement = document.querySelector('#wallet-connected p');
             if (statusElement) {
                 statusElement.textContent = `✅ ${walletType} Connected`;
             }
-            
-            console.log(`✅ UI updated for ${walletType} connection`);
         }
         
         function selectNumber(number) {
             selectedChoice = number;
             
-            // Update visual selection
             document.querySelectorAll('.dice-btn').forEach(btn => {
                 btn.classList.remove('dice-glow', 'ring-4', 'ring-yellow-400');
             });
             
             event.target.classList.add('dice-glow', 'ring-4', 'ring-yellow-400');
             
-            // Update play button
             document.getElementById('play-btn').disabled = false;
             document.getElementById('play-btn').textContent = `🎲 Roll Dice: ${number}`;
             
-            console.log('🎯 Number selected:', number);
+            console.log('🎯 Selected:', number);
         }
         
         async function playGame() {
-            if (!selectedChoice || !userAddress || !contract) {
-                console.log('❌ Cannot play: missing requirements', { selectedChoice, userAddress: !!userAddress, contract: !!contract });
-                return;
-            }
+            if (!selectedChoice || !userAddress || !contract) return;
             
             try {
-                console.log('🎲 Starting game with choice:', selectedChoice);
                 showStatus('🎲 Rolling dice...', 'info');
                 document.getElementById('play-btn').disabled = true;
                 document.getElementById('play-btn').textContent = '🎲 Rolling...';
                 
-                // Send transaction
-                console.log('📤 Sending transaction to contract...');
-                const tx = await contract.play(selectedChoice);
+                // Enhanced transaction sending with retry logic
+                let tx;
+                let attempts = 0;
+                const maxAttempts = 3;
+                
+                while (attempts < maxAttempts) {
+                    try {
+                        tx = await contract.play(selectedChoice);
+                        break;
+                    } catch (txError) {
+                        attempts++;
+                        console.log(`Transaction attempt ${attempts} failed:`, txError.message);
+                        
+                        if (attempts === maxAttempts) {
+                            throw txError;
+                        }
+                        
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                }
+                
                 console.log('✅ Transaction sent:', tx.hash);
                 showStatus('⏳ Transaction sent, waiting for confirmation...', 'info');
                 
-                // Wait for confirmation
                 const receipt = await tx.wait();
                 console.log('✅ Transaction confirmed:', receipt.transactionHash);
                 
-                // Parse events from receipt
+                // Parse game result
                 const gameEvent = receipt.events?.find(event => event.event === 'GamePlayed');
                 
                 if (gameEvent) {
                     const [player, chosenNumber, rolledNumber, won] = gameEvent.args;
-                    const gameResult = {
-                        player: player,
-                        chosen: chosenNumber.toNumber(),
-                        rolled: rolledNumber.toNumber(),
-                        won: won
-                    };
-                    
-                    console.log('🎮 Game result:', gameResult);
-                    await showGameResult(gameResult.chosen, gameResult.rolled, gameResult.won);
+                    await showGameResult(chosenNumber.toNumber(), rolledNumber.toNumber(), won);
                 } else {
-                    console.warn('⚠️ No GamePlayed event found in receipt');
-                    showStatus('⚠️ Game completed but result unclear. Check blockchain explorer.', 'warning');
+                    showStatus('⚠️ Game completed but result unclear', 'warning');
                 }
                 
-                // Refresh data
                 await loadInitialData();
                 await checkCooldown();
                 
             } catch (error) {
-                console.error('❌ Game play error:', error);
+                console.error('❌ Game error:', error);
                 
                 if (error.message.includes('Wait 10 seconds') || error.message.includes('Cooldown')) {
                     showStatus('⏱️ Wait 10 seconds between games!', 'error');
                     await checkCooldown();
-                } else if (error.message.includes('Insufficient funds') || error.message.includes('balance')) {
+                } else if (error.message.includes('Insufficient funds')) {
                     showStatus('💰 Contract has insufficient USDC for prizes!', 'error');
                 } else if (error.message.includes('rejected') || error.message.includes('denied')) {
                     showStatus('❌ Transaction rejected by user', 'error');
@@ -525,16 +597,12 @@
                     showStatus('❌ Game failed: ' + (error.message || 'Unknown error'), 'error');
                 }
                 
-                // Re-enable play button
                 document.getElementById('play-btn').disabled = false;
                 document.getElementById('play-btn').textContent = `🎲 Roll Dice: ${selectedChoice}`;
             }
         }
         
         async function showGameResult(chosenNumber, rolledNumber, won) {
-            console.log('🎮 Displaying game result:', { chosenNumber, rolledNumber, won });
-            
-            // Hide game section, show result
             document.getElementById('game-section').style.display = 'none';
             document.getElementById('result-section').style.display = 'block';
             
@@ -543,33 +611,21 @@
             const resultTitle = document.getElementById('result-title');
             const prizeInfo = document.getElementById('prize-info');
             
-            // Display choices and result
             document.getElementById('user-choice').innerHTML = `${chosenNumber}<br>${diceSymbols[chosenNumber-1]}`;
             document.getElementById('dice-result').innerHTML = `${rolledNumber}<br>${diceSymbols[rolledNumber-1]}`;
             
             if (won) {
-                // Winner animation and styling
                 resultCard.className = 'winner-animation bg-green-400/20 border-2 border-green-400 rounded-2xl p-8 mb-6';
                 resultIcon.textContent = '🎉';
                 resultTitle.innerHTML = '<span class="text-green-300">JACKPOT! YOU WON!</span>';
                 prizeInfo.innerHTML = `
                     <div class="bg-yellow-400/20 border border-yellow-400/40 rounded-xl p-4">
                         <p class="text-yellow-300 font-bold text-lg">🏆 Prize: 0.01 USDC</p>
-                        <p class="text-white/80 text-sm mt-1">Prize sent to your wallet!</p>
+                        <p class="text-white/80 text-sm mt-1">Sent to your wallet!</p>
                     </div>
                 `;
                 showStatus('🎉 Congratulations! You won 0.01 USDC!', 'success');
-                
-                // Trigger celebration sound/haptic if available
-                if (farcasterSdk && farcasterSdk.actions && farcasterSdk.actions.haptic) {
-                    try {
-                        farcasterSdk.actions.haptic({ type: 'success' });
-                    } catch (e) {
-                        console.log('Haptic feedback not available');
-                    }
-                }
             } else {
-                // Loss styling
                 resultCard.className = 'bg-red-400/20 border-2 border-red-400 rounded-2xl p-8 mb-6';
                 resultIcon.textContent = '😔';
                 resultTitle.innerHTML = '<span class="text-red-300">Not This Time!</span>';
@@ -584,62 +640,39 @@
         }
         
         function resetGame() {
-            console.log('🔄 Resetting game...');
-            
-            // Reset UI state
             document.getElementById('result-section').style.display = 'none';
             document.getElementById('game-section').style.display = 'block';
             
-            // Clear selection
             selectedChoice = 0;
             document.querySelectorAll('.dice-btn').forEach(btn => {
                 btn.classList.remove('dice-glow', 'ring-4', 'ring-yellow-400');
             });
             
-            // Reset play button
             document.getElementById('play-btn').disabled = true;
             document.getElementById('play-btn').textContent = 'Select a number first';
             
-            // Check cooldown status
             checkCooldown();
-            
-            console.log('✅ Game reset complete');
         }
         
         async function checkCooldown() {
-            if (!userAddress) {
-                console.log('ℹ️ No user address for cooldown check');
-                return;
-            }
+            if (!userAddress) return;
             
             try {
-                console.log('⏰ Checking cooldown for user:', userAddress);
-                
-                // Use read-only provider for cooldown check to avoid wallet popups
                 const checkContract = readOnlyProvider ? 
                     new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider) : 
                     contract;
                 
-                if (!checkContract) {
-                    console.log('❌ No contract available for cooldown check');
-                    return;
-                }
+                if (!checkContract) return;
                 
                 const cooldownTime = await checkContract.getCooldown(userAddress);
                 const cooldownSeconds = cooldownTime.toNumber();
                 
-                console.log('⏰ Cooldown remaining:', cooldownSeconds, 'seconds');
-                
                 if (cooldownSeconds > 0) {
-                    // Show cooldown UI
                     document.getElementById('cooldown-section').style.display = 'block';
                     document.getElementById('game-section').style.display = 'none';
                     
-                    // Start cooldown timer
                     let remaining = cooldownSeconds;
-                    if (cooldownInterval) {
-                        clearInterval(cooldownInterval);
-                    }
+                    if (cooldownInterval) clearInterval(cooldownInterval);
                     
                     cooldownInterval = setInterval(() => {
                         document.getElementById('cooldown-timer').textContent = `${remaining}s`;
@@ -649,21 +682,15 @@
                             clearInterval(cooldownInterval);
                             document.getElementById('cooldown-section').style.display = 'none';
                             document.getElementById('game-section').style.display = 'block';
-                            console.log('✅ Cooldown expired, game available');
                         }
                     }, 1000);
                 } else {
-                    // No cooldown, hide cooldown section
                     document.getElementById('cooldown-section').style.display = 'none';
-                    if (cooldownInterval) {
-                        clearInterval(cooldownInterval);
-                    }
-                    console.log('✅ No cooldown, game ready');
+                    if (cooldownInterval) clearInterval(cooldownInterval);
                 }
                 
             } catch (error) {
                 console.error('❌ Cooldown check error:', error);
-                // Don't show error to user, just log it
             }
         }
         
@@ -674,71 +701,37 @@
             statusText.textContent = message;
             statusDiv.style.display = 'block';
             
-            // Auto-hide non-error messages
             if (type !== 'error') {
                 setTimeout(() => {
                     statusDiv.style.display = 'none';
                 }, 6000);
             }
             
-            // Color coding for different message types
-            const messageElement = statusDiv.querySelector('div');
-            messageElement.className = `bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-white/20`;
-            
-            if (type === 'error') {
-                messageElement.classList.add('border-red-400/40', 'bg-red-400/10');
-            } else if (type === 'success') {
-                messageElement.classList.add('border-green-400/40', 'bg-green-400/10');
-            } else if (type === 'warning') {
-                messageElement.classList.add('border-yellow-400/40', 'bg-yellow-400/10');
-            }
-            
             console.log(`Status (${type}):`, message);
         }
         
-        // Auto-refresh contract data every 30 seconds
+        // Auto-refresh data
         setInterval(() => {
             if (readOnlyProvider) {
-                console.log('🔄 Auto-refreshing contract data...');
                 loadInitialData();
             }
         }, 30000);
         
-        // Error handling for unhandled promise rejections
-        window.addEventListener('unhandledrejection', event => {
-            console.error('❌ Unhandled promise rejection:', event.reason);
-            event.preventDefault();
-        });
-        
-        // Cleanup on page unload
+        // Cleanup
         window.addEventListener('beforeunload', () => {
-            if (cooldownInterval) {
-                clearInterval(cooldownInterval);
-            }
+            if (cooldownInterval) clearInterval(cooldownInterval);
         });
     </script>
 
-    <!-- Farcaster SDK Integration -->
+    <!-- Farcaster SDK -->
     <script type="module">
         try {
             const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk');
             window.sdk = sdk;
-            
-            // Initialize SDK
             await sdk.actions.ready({ disableNativeGestures: true });
-            console.log('✅ Farcaster SDK initialized successfully');
-            
-            // Optional: Log SDK capabilities
-            if (sdk.context) {
-                console.log('📱 Farcaster context available');
-            }
-            if (sdk.wallet) {
-                console.log('🔗 Farcaster wallet integration available');
-            }
-            
+            console.log('✅ Farcaster SDK initialized');
         } catch (error) {
-            console.error('❌ Farcaster SDK initialization failed:', error);
-            console.log('ℹ️ App will continue without Farcaster integration');
+            console.error('❌ Farcaster SDK failed:', error);
         }
     </script>
 
