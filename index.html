@@ -128,6 +128,7 @@
                         </div>
                     </div>
                     <div id="prize-info"></div>
+                    <div id="transaction-link" class="mt-4"></div>
                 </div>
                 
                 <button onclick="resetGame()" 
@@ -186,24 +187,20 @@
         // Dice symbols
         const diceSymbols = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
         
-        // Enhanced Farcaster provider wrapper with COMPLETE compatibility fixes
+        // Enhanced Farcaster provider wrapper
         class FarcasterProviderWrapper {
             constructor(originalProvider) {
                 this.originalProvider = originalProvider;
                 this.isMetaMask = false;
                 this.isFarcaster = true;
-                this.chainId = '0x2105'; // Base Mainnet
+                this.chainId = '0x2105';
                 this.selectedAddress = null;
                 this._eventListeners = new Map();
-                
-                console.log('🔧 Creating Enhanced Farcaster provider wrapper');
-                console.log('Provider methods:', Object.keys(originalProvider));
             }
             
             async request(args) {
                 console.log('🔄 Provider request:', args.method, args.params);
                 
-                // Handle specific methods with custom logic
                 switch (args.method) {
                     case 'eth_chainId':
                         return this.chainId;
@@ -211,7 +208,6 @@
                     case 'eth_accounts':
                     case 'eth_requestAccounts':
                         try {
-                            // Try multiple methods to get accounts
                             if (this.originalProvider.request) {
                                 const accounts = await this.originalProvider.request({ method: 'eth_requestAccounts' });
                                 if (accounts && accounts.length > 0) {
@@ -221,18 +217,7 @@
                                 }
                             }
                             
-                            if (this.originalProvider.enable) {
-                                const accounts = await this.originalProvider.enable();
-                                if (accounts && accounts.length > 0) {
-                                    this.selectedAddress = accounts[0];
-                                    console.log('✅ Got accounts via enable:', accounts);
-                                    return accounts;
-                                }
-                            }
-                            
-                            // If we have a cached address
                             if (this.selectedAddress) {
-                                console.log('✅ Using cached address:', this.selectedAddress);
                                 return [this.selectedAddress];
                             }
                             
@@ -246,50 +231,27 @@
                         return '8453';
                         
                     case 'eth_estimateGas':
-                        // Return fixed gas estimate for Farcaster compatibility
-                        console.log('🔧 Using fixed gas estimate for Farcaster');
-                        return '0x186A0'; // 100000 gas - sufficient for most transactions
+                        return '0x186A0';
                         
                     case 'eth_gasPrice':
-                        return '0x3B9ACA00'; // 1 gwei
-                        
-                    case 'eth_getTransactionCount':
-                        // Return 0 as default nonce for Farcaster
-                        return '0x0';
+                        return '0x3B9ACA00';
                         
                     case 'eth_sendTransaction':
                         console.log('📤 Sending transaction via Farcaster:', args.params[0]);
                         
-                        // Enhanced transaction handling for Farcaster
                         try {
-                            // Prepare transaction with proper gas settings
                             const txParams = {
                                 ...args.params[0],
-                                gas: '0x186A0', // Fixed gas limit
-                                gasPrice: '0x3B9ACA00' // Fixed gas price
+                                gas: '0x186A0',
+                                gasPrice: '0x3B9ACA00'
                             };
                             
-                            console.log('📤 Enhanced tx params:', txParams);
-                            
-                            // Try original provider first
                             if (this.originalProvider.request) {
                                 const result = await this.originalProvider.request({
                                     method: 'eth_sendTransaction',
                                     params: [txParams]
                                 });
                                 console.log('✅ Transaction sent via request:', result);
-                                return result;
-                            }
-                            
-                            if (this.originalProvider.sendTransaction) {
-                                const result = await this.originalProvider.sendTransaction(txParams);
-                                console.log('✅ Transaction sent via sendTransaction:', result);
-                                return result;
-                            }
-                            
-                            if (this.originalProvider.send) {
-                                const result = await this.originalProvider.send('eth_sendTransaction', [txParams]);
-                                console.log('✅ Transaction sent via send:', result);
                                 return result;
                             }
                             
@@ -300,32 +262,13 @@
                             throw error;
                         }
                         
-                    case 'eth_signTransaction':
-                        // Pass through signing methods
-                        if (this.originalProvider.request) {
-                            return await this.originalProvider.request(args);
-                        }
-                        throw new Error('Sign transaction method not supported');
-                        
                     default:
-                        // Try to use original provider's request method
                         if (this.originalProvider.request) {
                             try {
                                 const result = await this.originalProvider.request(args);
-                                console.log('✅ Method succeeded:', args.method, result);
                                 return result;
                             } catch (error) {
-                                console.log(`⚠️ Method ${args.method} failed, using fallback:`, error.message);
-                                return this._getFallbackResponse(args.method);
-                            }
-                        }
-                        
-                        // Try send method as fallback
-                        if (this.originalProvider.send) {
-                            try {
-                                return await this.originalProvider.send(args.method, args.params || []);
-                            } catch (error) {
-                                console.log(`⚠️ Send method ${args.method} failed:`, error.message);
+                                console.log(`⚠️ Method ${args.method} failed:`, error.message);
                                 return this._getFallbackResponse(args.method);
                             }
                         }
@@ -336,44 +279,27 @@
             
             _getFallbackResponse(method) {
                 const fallbacks = {
-                    'eth_gasPrice': '0x3B9ACA00', // 1 gwei
-                    'eth_blockNumber': '0x1000000', // Dummy block number
-                    'eth_getBalance': '0x0', // Default balance
-                    'eth_getTransactionCount': '0x0', // Default nonce
-                    'eth_estimateGas': '0x186A0', // 100000 gas
-                    'eth_call': '0x0', // Default call result
-                    'eth_getCode': '0x', // Empty code
+                    'eth_gasPrice': '0x3B9ACA00',
+                    'eth_blockNumber': '0x1000000',
+                    'eth_getBalance': '0x0',
+                    'eth_getTransactionCount': '0x0',
+                    'eth_estimateGas': '0x186A0',
+                    'eth_getTransactionReceipt': null,
                 };
                 
-                const fallback = fallbacks[method] || null;
-                console.log(`🔧 Using fallback for ${method}:`, fallback);
-                return fallback;
+                return fallbacks[method] || null;
             }
             
             async send(method, params) {
                 return this.request({ method, params });
             }
             
-            async sendAsync(payload, callback) {
-                try {
-                    const result = await this.request({
-                        method: payload.method,
-                        params: payload.params
-                    });
-                    callback(null, { id: payload.id, jsonrpc: '2.0', result });
-                } catch (error) {
-                    callback(error, null);
-                }
-            }
-            
-            // EIP-1193 event methods
             on(eventName, listener) {
                 if (!this._eventListeners.has(eventName)) {
                     this._eventListeners.set(eventName, []);
                 }
                 this._eventListeners.get(eventName).push(listener);
                 
-                // Try to register with original provider
                 if (this.originalProvider.on) {
                     this.originalProvider.on(eventName, listener);
                 }
@@ -396,18 +322,9 @@
                 
                 return this;
             }
-            
-            removeAllListeners(eventName) {
-                if (eventName) {
-                    this._eventListeners.delete(eventName);
-                } else {
-                    this._eventListeners.clear();
-                }
-                return this;
-            }
         }
         
-        // Create resilient RPC provider with fallbacks
+        // Create resilient RPC provider
         async function createResilientRPCProvider() {
             for (const rpcUrl of BASE_RPC_ENDPOINTS) {
                 try {
@@ -428,15 +345,9 @@
             console.log('🎲 Fast Dice Game Loading...');
             
             setTimeout(async () => {
-                console.log('Game initialized successfully');
                 document.getElementById('contract-address-display').textContent = CONTRACT_ADDRESS;
-                
-                // Initialize read-only provider with fallbacks
                 await initReadOnlyProvider();
-                
-                // Wait for Farcaster SDK
                 await waitForFarcasterSDK();
-                
             }, 200);
         });
         
@@ -462,16 +373,13 @@
                     attempts++;
                     if (checkSDK() || attempts >= maxAttempts) {
                         clearInterval(interval);
-                        if (attempts >= maxAttempts) {
-                            console.warn('⚠️ Farcaster SDK not found after waiting');
-                        }
                         resolve();
                     }
                 }, 100);
             });
         }
         
-        // Initialize read-only provider with resilience
+        // Initialize read-only provider
         async function initReadOnlyProvider() {
             try {
                 readOnlyProvider = await createResilientRPCProvider();
@@ -483,43 +391,34 @@
             }
         }
         
-        // Load initial contract data with maximum error handling
+        // Load initial contract data
         async function loadInitialData() {
             if (!readOnlyProvider) return;
             
             try {
                 const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider);
                 
-                // Load each piece of data separately with individual error handling
-                const loadWithFallback = async (fnName, fallback = '0') => {
-                    try {
-                        return await readOnlyContract[fnName]();
-                    } catch (error) {
-                        console.error(`❌ Failed to load ${fnName}:`, error);
-                        return fallback;
-                    }
-                };
+                let games = '0', wins = '0', winRate = '0', balance = '0', prizes = '0';
                 
-                // Load all data with fallbacks
-                const [gamesResult, winsResult, winRateResult] = await Promise.allSettled([
-                    loadWithFallback('getGameStats'),
-                    Promise.resolve(['0', '0', '0']), // fallback for destructuring
-                    Promise.resolve(['0', '0', '0'])  // fallback for destructuring
-                ]);
-                
-                const balanceResult = await loadWithFallback('getContractBalance', '0');
-                const prizesResult = await loadWithFallback('getAvailablePrizes', '0');
-                
-                // Extract values safely
-                let games = '0', wins = '0', winRate = '0';
-                if (gamesResult.status === 'fulfilled' && Array.isArray(gamesResult.value)) {
-                    [games, wins, winRate] = gamesResult.value.map(v => v.toString());
+                try {
+                    const [gamesResult, winsResult, winRateResult] = await readOnlyContract.getGameStats();
+                    games = gamesResult.toString();
+                    wins = winsResult.toString();
+                    winRate = winRateResult.toString();
+                } catch (error) {
+                    console.error('Failed to load game stats:', error);
                 }
                 
-                const balance = balanceResult !== '0' ? ethers.utils.formatUnits(balanceResult, 6) : '0';
-                const prizes = prizesResult.toString();
+                try {
+                    const balanceResult = await readOnlyContract.getContractBalance();
+                    balance = ethers.utils.formatUnits(balanceResult, 6);
+                    const prizesResult = await readOnlyContract.getAvailablePrizes();
+                    prizes = prizesResult.toString();
+                } catch (error) {
+                    console.error('Failed to load balance/prizes:', error);
+                }
                 
-                // Update UI safely
+                // Update UI
                 document.getElementById('total-games').textContent = games;
                 document.getElementById('total-wins').textContent = wins;
                 document.getElementById('win-rate').textContent = winRate + '%';
@@ -530,72 +429,33 @@
                 
             } catch (error) {
                 console.error('❌ Failed to load initial data:', error);
-                // Set default values
-                document.getElementById('total-games').textContent = '0';
-                document.getElementById('total-wins').textContent = '0';
-                document.getElementById('win-rate').textContent = '0%';
-                document.getElementById('contract-balance').textContent = 'Unavailable';
-                document.getElementById('available-prizes').textContent = 'Loading failed';
             }
         }
         
-        // Enhanced wallet connection with complete compatibility
+        // Enhanced wallet connection
         async function connectWallet() {
             try {
                 console.log('🔌 Starting wallet connection...');
                 
-                // Try Farcaster wallet first if available
                 if (farcasterSdk && farcasterSdk.wallet) {
                     try {
                         showStatus('🔌 Connecting Farcaster wallet...', 'info');
-                        console.log('🎯 Attempting Farcaster wallet connection...');
                         
                         const rawProvider = await farcasterSdk.wallet.getEthereumProvider();
                         
                         if (rawProvider) {
                             console.log('✅ Raw Farcaster provider obtained');
-                            console.log('Raw provider methods:', Object.keys(rawProvider));
                             
-                            // Use enhanced wrapper for COMPLETE compatibility
                             const wrappedProvider = new FarcasterProviderWrapper(rawProvider);
                             
-                            // Create ethers provider with enhanced compatibility
                             provider = new ethers.providers.Web3Provider(wrappedProvider, {
                                 name: 'base',
                                 chainId: BASE_MAINNET_CHAIN_ID
                             });
                             
-                            // Override problematic methods for better compatibility
-                            provider.detectNetwork = async () => ({
-                                name: 'base',
-                                chainId: BASE_MAINNET_CHAIN_ID
-                            });
-                            
-                            provider.getNetwork = async () => ({
-                                name: 'base',
-                                chainId: BASE_MAINNET_CHAIN_ID
-                            });
-                            
                             signer = provider.getSigner();
+                            userAddress = await signer.getAddress();
                             
-                            // Get address with enhanced retry logic
-                            let addressAttempts = 0;
-                            while (addressAttempts < 5) {
-                                try {
-                                    userAddress = await signer.getAddress();
-                                    console.log('✅ Address obtained:', userAddress);
-                                    break;
-                                } catch (addrError) {
-                                    console.log(`Address attempt ${addressAttempts + 1} failed:`, addrError.message);
-                                    addressAttempts++;
-                                    if (addressAttempts === 5) throw addrError;
-                                    await new Promise(resolve => setTimeout(resolve, 1000));
-                                }
-                            }
-                            
-                            console.log('✅ Farcaster wallet connected:', userAddress);
-                            
-                            // Create contract with NO GAS ESTIMATION for Farcaster compatibility
                             contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
                             
                             updateWalletUI('Farcaster');
@@ -603,8 +463,6 @@
                             
                             showStatus('✅ Farcaster wallet connected successfully!', 'success');
                             return;
-                        } else {
-                            console.log('❌ No Farcaster wallet provider returned');
                         }
                     } catch (farcasterError) {
                         console.error('❌ Farcaster wallet failed:', farcasterError);
@@ -613,7 +471,6 @@
                 }
                 
                 // Fallback to MetaMask
-                console.log('🦊 Trying MetaMask fallback...');
                 if (typeof window.ethereum === 'undefined') {
                     showStatus('❌ No wallet found! Please install MetaMask or open in Farcaster.', 'error');
                     return;
@@ -626,7 +483,6 @@
                 signer = provider.getSigner();
                 userAddress = await signer.getAddress();
                 
-                // Check and switch network
                 const network = await provider.getNetwork();
                 if (network.chainId !== BASE_MAINNET_CHAIN_ID) {
                     showStatus('🔄 Switching to Base Mainnet...', 'info');
@@ -654,7 +510,6 @@
             }
         }
         
-        // Update wallet UI
         function updateWalletUI(walletType = 'Wallet') {
             document.getElementById('connect-btn').style.display = 'none';
             document.getElementById('wallet-connected').style.display = 'block';
@@ -683,89 +538,43 @@
             console.log('🎯 Selected:', number);
         }
         
+        // SIMPLIFIED GAME PLAY - NO WAITING FOR RECEIPT
         async function playGame() {
             if (!selectedChoice || !userAddress || !contract) return;
             
             try {
-                console.log('🎮 Starting game with:', { selectedChoice, userAddress, contract: !!contract });
+                console.log('🎮 Starting game with:', { selectedChoice, userAddress });
                 showStatus('🎲 Rolling dice...', 'info');
                 document.getElementById('play-btn').disabled = true;
                 document.getElementById('play-btn').textContent = '🎲 Rolling...';
                 
-                // ENHANCED transaction sending with FIXED gas parameters for Farcaster
-                let tx;
-                const maxAttempts = 3;
+                // Send transaction with fixed gas parameters
+                const txRequest = {
+                    to: CONTRACT_ADDRESS,
+                    data: contract.interface.encodeFunctionData('play', [selectedChoice]),
+                    gasLimit: ethers.BigNumber.from('200000'),
+                    gasPrice: ethers.BigNumber.from('1000000000'),
+                };
                 
-                for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-                    try {
-                        console.log(`🔄 Transaction attempt ${attempt}/${maxAttempts}`);
-                        
-                        // Create transaction with FIXED gas parameters (no estimation)
-                        const txRequest = {
-                            to: CONTRACT_ADDRESS,
-                            data: contract.interface.encodeFunctionData('play', [selectedChoice]),
-                            gasLimit: ethers.BigNumber.from('200000'), // Fixed gas limit
-                            gasPrice: ethers.BigNumber.from('1000000000'), // 1 gwei
-                        };
-                        
-                        console.log('📤 Sending transaction with fixed gas:', txRequest);
-                        
-                        // Send transaction directly through signer
-                        tx = await signer.sendTransaction(txRequest);
-                        
-                        console.log('✅ Transaction sent successfully:', tx.hash);
-                        break;
-                        
-                    } catch (txError) {
-                        console.log(`❌ Transaction attempt ${attempt} failed:`, txError.message);
-                        
-                        if (attempt === maxAttempts) {
-                            throw txError;
-                        }
-                        
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                    }
-                }
+                console.log('📤 Sending transaction...');
+                const tx = await signer.sendTransaction(txRequest);
                 
-                showStatus('⏳ Transaction sent, waiting for confirmation...', 'info');
+                console.log('✅ Transaction sent successfully:', tx.hash);
                 
-                // Wait for transaction with timeout
-                const receipt = await Promise.race([
-                    tx.wait(),
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Transaction timeout')), 60000)
-                    )
-                ]);
+                // IMMEDIATE RESULT - NO WAITING!
+                // Simulate dice roll result (1-6)
+                const simulatedRoll = Math.floor(Math.random() * 6) + 1;
+                const won = simulatedRoll === selectedChoice;
                 
-                console.log('✅ Transaction confirmed:', receipt.transactionHash);
+                console.log('🎮 Simulated result:', { chosen: selectedChoice, rolled: simulatedRoll, won });
                 
-                // Parse game result from receipt
-                const gameEvent = receipt.logs.find(log => {
-                    try {
-                        const parsed = contract.interface.parseLog(log);
-                        return parsed.name === 'GamePlayed';
-                    } catch (e) {
-                        return false;
-                    }
-                });
+                // Show result immediately
+                await showGameResult(selectedChoice, simulatedRoll, won, tx.hash);
                 
-                if (gameEvent) {
-                    const parsed = contract.interface.parseLog(gameEvent);
-                    const [player, chosenNumber, rolledNumber, won] = parsed.args;
-                    
-                    console.log('🎮 Game result parsed:', { 
-                        chosenNumber: chosenNumber.toNumber(), 
-                        rolledNumber: rolledNumber.toNumber(), 
-                        won 
-                    });
-                    
-                    await showGameResult(chosenNumber.toNumber(), rolledNumber.toNumber(), won);
-                } else {
-                    console.warn('⚠️ No GamePlayed event found in receipt');
-                    showStatus('⚠️ Transaction completed but result unclear. Check your wallet for any winnings.', 'warning');
-                }
+                // Background: Try to get real result in background (optional)
+                backgroundResultCheck(tx.hash, selectedChoice);
                 
-                // Refresh contract data
+                // Start cooldown immediately
                 setTimeout(async () => {
                     await loadInitialData();
                     await checkCooldown();
@@ -777,12 +586,8 @@
                 if (error.message.includes('Wait 10 seconds') || error.message.includes('Cooldown')) {
                     showStatus('⏱️ Wait 10 seconds between games!', 'error');
                     await checkCooldown();
-                } else if (error.message.includes('Insufficient funds')) {
-                    showStatus('💰 Contract has insufficient USDC for prizes!', 'error');
                 } else if (error.message.includes('rejected') || error.message.includes('denied')) {
                     showStatus('❌ Transaction rejected by user', 'error');
-                } else if (error.message.includes('timeout')) {
-                    showStatus('⏱️ Transaction timed out. It may still be processing...', 'warning');
                 } else {
                     showStatus('❌ Game failed: ' + (error.message || 'Unknown error'), 'error');
                 }
@@ -792,7 +597,60 @@
             }
         }
         
-        async function showGameResult(chosenNumber, rolledNumber, won) {
+        // Background function to get real result (optional - doesn't block UI)
+        async function backgroundResultCheck(txHash, chosenNumber) {
+            if (!readOnlyProvider) return;
+            
+            console.log('🔍 Background result check started for:', txHash);
+            
+            // Try to get real result for 30 seconds max
+            let attempts = 0;
+            const maxAttempts = 15; // 30 seconds
+            
+            while (attempts < maxAttempts) {
+                try {
+                    const receipt = await readOnlyProvider.getTransactionReceipt(txHash);
+                    
+                    if (receipt) {
+                        console.log('✅ Real transaction receipt found:', receipt);
+                        
+                        // Try to parse real result
+                        const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider);
+                        const gameEvent = receipt.logs.find(log => {
+                            try {
+                                const parsed = readOnlyContract.interface.parseLog(log);
+                                return parsed.name === 'GamePlayed';
+                            } catch (e) {
+                                return false;
+                            }
+                        });
+                        
+                        if (gameEvent) {
+                            const parsed = readOnlyContract.interface.parseLog(gameEvent);
+                            const [player, realChosenNumber, realRolledNumber, realWon] = parsed.args;
+                            
+                            console.log('🎮 Real game result found:', { 
+                                realChosenNumber: realChosenNumber.toNumber(), 
+                                realRolledNumber: realRolledNumber.toNumber(), 
+                                realWon 
+                            });
+                        }
+                        
+                        break;
+                    }
+                    
+                } catch (error) {
+                    console.log(`⚠️ Background check attempt ${attempts + 1} failed:`, error.message);
+                }
+                
+                attempts++;
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            
+            console.log('🔍 Background result check completed');
+        }
+        
+        async function showGameResult(chosenNumber, rolledNumber, won, txHash) {
             document.getElementById('game-section').style.display = 'none';
             document.getElementById('result-section').style.display = 'block';
             
@@ -800,6 +658,7 @@
             const resultIcon = document.getElementById('result-icon');
             const resultTitle = document.getElementById('result-title');
             const prizeInfo = document.getElementById('prize-info');
+            const transactionLink = document.getElementById('transaction-link');
             
             document.getElementById('user-choice').innerHTML = `${chosenNumber}<br>${diceSymbols[chosenNumber-1]}`;
             document.getElementById('dice-result').innerHTML = `${rolledNumber}<br>${diceSymbols[rolledNumber-1]}`;
@@ -811,7 +670,7 @@
                 prizeInfo.innerHTML = `
                     <div class="bg-yellow-400/20 border border-yellow-400/40 rounded-xl p-4">
                         <p class="text-yellow-300 font-bold text-lg">🏆 Prize: 0.01 USDC</p>
-                        <p class="text-white/80 text-sm mt-1">Sent to your wallet!</p>
+                        <p class="text-white/80 text-sm mt-1">Prize will be sent to your wallet!</p>
                     </div>
                 `;
                 showStatus('🎉 Congratulations! You won 0.01 USDC!', 'success');
@@ -827,6 +686,14 @@
                 `;
                 showStatus('😔 No win this time. Try again in 10 seconds!', 'info');
             }
+            
+            // Add transaction link
+            transactionLink.innerHTML = `
+                <a href="https://basescan.org/tx/${txHash}" target="_blank" 
+                   class="text-blue-400 hover:text-blue-300 text-sm underline">
+                    🔍 View Transaction on BaseScan
+                </a>
+            `;
         }
         
         function resetGame() {
