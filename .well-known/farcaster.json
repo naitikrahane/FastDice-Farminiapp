@@ -1,0 +1,30 @@
+{
+  "frame": {
+    "name": "FastDice",
+    "version": "1",
+    "iconUrl": "https://fastdice.vercel.app/icon.png",
+    "homeUrl": "https://fastdice.vercel.app/",
+    "buttonTitle": "Play Now",
+    "splashImageUrl": "https://fastdice.vercel.app/splash.png",
+    "splashBackgroundColor": "#1E3A8A",
+    "webhookUrl": "https://fastdice.vercel.app/",
+    "subtitle": "Try to Win I challenge You",
+    "description": "Test your luck! Choose a number between 1 and 6. If your number matches the dice roll, you win a reward. But beware — winning isn’t easy!",
+    "primaryCategory": "games",
+    "tags": [
+      "game",
+      "reward",
+      "win",
+      "prize"
+    ],
+    "tagline": "Can You Beat the Dice?",
+    "ogTitle": "Take a Chance, Win Big",
+    "ogDescription": "Choose your number, roll the dice, and claim your reward! Are you lucky enough to win?",
+    "ogImageUrl": "https://fastdice.vercel.app/icon.png"
+  },
+  "accountAssociation": {
+    "header": "eyJmaWQiOjg0NTYyMywidHlwZSI6ImF1dGgiLCJrZXkiOiIweEZlMTM3NTAwM2M2NTdkM0REMkRjRTE2QUQwNTdFNTZmQkE4RjIyNjMifQ",
+    "payload": "eyJkb21haW4iOiIifQ",
+    "signature": "vvK4MLsxNAQ1xanKEJ09oga4I2waFZ0lolWsLqIcCBhatK0Yfe2879ogqDhkgfYGftzsMp2gy0on1qxqpFxHSRw="
+  }
+}
