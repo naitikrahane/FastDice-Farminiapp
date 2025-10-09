@@ -22,9 +22,11 @@
     "ogDescription": "Choose your number, roll the dice, and claim your reward! Are you lucky enough to win?",
     "ogImageUrl": "https://fastdice.vercel.app/icon.png"
   },
+  {
   "accountAssociation": {
-    "header": "eyJmaWQiOjg0NTYyMywidHlwZSI6ImF1dGgiLCJrZXkiOiIweEZlMTM3NTAwM2M2NTdkM0REMkRjRTE2QUQwNTdFNTZmQkE4RjIyNjMifQ",
-    "payload": "eyJkb21haW4iOiIifQ",
-    "signature": "vvK4MLsxNAQ1xanKEJ09oga4I2waFZ0lolWsLqIcCBhatK0Yfe2879ogqDhkgfYGftzsMp2gy0on1qxqpFxHSRw="
+    "header": "eyJmaWQiOjg0NTYyMywidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDhiM2JhMjBGYzEwNGY4ZGJGY0Y0QTgwNjJjRjJhRjhBMWZkOTY2N2MifQ",
+    "payload": "eyJkb21haW4iOiJmYXN0ZGljZS52ZXJjZWwuYXBwIn0",
+    "signature": "MHhmZDQ0YjIxYWEzZTEyNzJjOGNmZWFlODAzMGJiNDY5MGQxMDBlMTcxYWIwOTY2ODk5NWVhNmU1YTVmZDZjNWY1NmExYTFmNzViMzRlYjdmMDgwOGRkNTJjOGNhMDgwNGYxMjRiNTVjZWI5MDVjYjA5YWMwMzA2ZTQ3YTY0NmFiYzFj"
   }
+}
 }
