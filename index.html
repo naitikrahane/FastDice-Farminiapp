@@ -192,6 +192,14 @@
         const CONTRACT_ADDRESS = "0xeA3F62030029DD99E487f6A3c415dc31e03337FD";
         const BASE_MAINNET_CHAIN_ID = 8453;
         
+        // RPC Fallback URLs for Base Mainnet
+        const BASE_RPC_URLS = [
+            'https://mainnet.base.org',
+            'https://base-mainnet.public.blastapi.io',
+            'https://base.gateway.tenderly.co',
+            'https://base-rpc.publicnode.com'
+        ];
+        
         // Contract ABI
         const CONTRACT_ABI = [
             "function play(uint256 chosenNumber) external",
@@ -206,11 +214,28 @@
         
         // Game State
         let provider, signer, contract, userAddress;
+        let readOnlyProvider; // For reading contract data
         let selectedChoice = 0;
         let cooldownInterval;
         
         // Dice symbols
         const diceSymbols = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+        
+        // Create read-only provider with fallback
+        async function createReadOnlyProvider() {
+            for (let rpcUrl of BASE_RPC_URLS) {
+                try {
+                    const testProvider = new ethers.providers.JsonRpcProvider(rpcUrl);
+                    await testProvider.getNetwork(); // Test connection
+                    console.log('Connected to RPC:', rpcUrl);
+                    return testProvider;
+                } catch (error) {
+                    console.log('RPC failed:', rpcUrl, error.message);
+                    continue;
+                }
+            }
+            throw new Error('All RPC endpoints failed');
+        }
         
         // Initialize everything 
         window.addEventListener('load', function() {
@@ -220,6 +245,9 @@
             setTimeout(() => {
                 console.log('Game initialized successfully');
                 document.getElementById('contract-address-display').textContent = CONTRACT_ADDRESS || 'Please update contract address';
+                
+                // Initialize read-only provider for contract calls
+                initReadOnlyProvider();
                 
                 // Notify Farcaster SDK that app is ready 
                 if (typeof sdk !== 'undefined' && sdk.actions && sdk.actions.ready) {
@@ -240,7 +268,52 @@
             }, 200);
         });
         
-        // FIXED: Use correct Farcaster SDK wallet API from documentation
+        // Initialize read-only provider for contract reading
+        async function initReadOnlyProvider() {
+            try {
+                readOnlyProvider = await createReadOnlyProvider();
+                // Load initial contract data
+                await loadInitialData();
+            } catch (error) {
+                console.error('Failed to initialize read-only provider:', error);
+                showStatus('⚠️ Unable to load contract data. Some features may not work.', 'info');
+            }
+        }
+        
+        // Load initial contract data
+        async function loadInitialData() {
+            if (!readOnlyProvider) return;
+            
+            try {
+                const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider);
+                
+                // Load stats and balance
+                const [games, wins, winRate] = await readOnlyContract.getGameStats();
+                const balance = await readOnlyContract.getContractBalance();
+                const prizes = await readOnlyContract.getAvailablePrizes();
+                
+                // Update UI
+                document.getElementById('total-games').textContent = games.toString();
+                document.getElementById('total-wins').textContent = wins.toString();
+                document.getElementById('win-rate').textContent = winRate.toString() + '%';
+                
+                const balanceUSDC = ethers.utils.formatUnits(balance, 6);
+                document.getElementById('contract-balance').textContent = `${balanceUSDC} USDC`;
+                document.getElementById('available-prizes').textContent = `Available prizes: ${prizes.toString()}`;
+                
+                // Show stats
+                document.getElementById('game-stats').style.display = 'grid';
+                document.getElementById('contract-info').style.display = 'block';
+                
+                console.log('Initial data loaded successfully');
+                
+            } catch (error) {
+                console.error('Failed to load initial data:', error);
+                showStatus('⚠️ Contract data unavailable. Check your connection.', 'info');
+            }
+        }
+        
+        // Connect wallet with better error handling
         async function connectWallet() {
             try {
                 // First try Farcaster SDK wallet if available
@@ -263,7 +336,7 @@
                                 return;
                             }
                             
-                            // Setup contract
+                            // Setup contract with signer for transactions
                             contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
                             
                             // Update UI
@@ -273,13 +346,9 @@
                                 userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
                             
                             // Show game sections
-                            document.getElementById('game-stats').style.display = 'grid';
-                            document.getElementById('contract-info').style.display = 'block';
                             document.getElementById('game-section').style.display = 'block';
                             
-                            // Load game data
-                            await updateGameStats();
-                            await updateContractInfo();
+                            // Load user-specific data
                             await checkCooldown();
                             
                             showStatus('✅ Farcaster wallet connected!', 'success');
@@ -330,13 +399,9 @@
                     userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
                 
                 // Show game sections
-                document.getElementById('game-stats').style.display = 'grid';
-                document.getElementById('contract-info').style.display = 'block';
                 document.getElementById('game-section').style.display = 'block';
                 
-                // Load game data
-                await updateGameStats();
-                await updateContractInfo();
+                // Load user-specific data
                 await checkCooldown();
                 
                 showStatus('✅ Wallet connected! Choose your lucky number.', 'success');
@@ -365,7 +430,7 @@
         }
         
         async function playGame() {
-            if (!selectedChoice || !userAddress) return;
+            if (!selectedChoice || !userAddress || !contract) return;
             
             try {
                 showStatus('🎲 Rolling dice...', 'info');
@@ -398,8 +463,7 @@
                 }
                 
                 // Update stats and check cooldown
-                await updateGameStats();
-                await updateContractInfo();
+                await loadInitialData(); // Refresh all data
                 await checkCooldown();
                 
             } catch (error) {
@@ -476,10 +540,17 @@
         }
         
         async function checkCooldown() {
-            if (!contract || !userAddress) return;
+            if (!userAddress) return;
             
             try {
-                const cooldownTime = await contract.getCooldown(userAddress);
+                // Use read-only provider for cooldown check
+                const checkContract = readOnlyProvider ? 
+                    new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider) : 
+                    contract;
+                
+                if (!checkContract) return;
+                
+                const cooldownTime = await checkContract.getCooldown(userAddress);
                 const cooldownSeconds = cooldownTime.toNumber();
                 
                 if (cooldownSeconds > 0) {
@@ -510,31 +581,6 @@
             }
         }
         
-        async function updateGameStats() {
-            try {
-                const [games, wins, winRate] = await contract.getGameStats();
-                document.getElementById('total-games').textContent = games.toString();
-                document.getElementById('total-wins').textContent = wins.toString();
-                document.getElementById('win-rate').textContent = winRate.toString() + '%';
-            } catch (error) {
-                console.error('Stats update error:', error);
-            }
-        }
-        
-        async function updateContractInfo() {
-            try {
-                const balance = await contract.getContractBalance();
-                const prizes = await contract.getAvailablePrizes();
-                
-                const balanceUSDC = ethers.utils.formatUnits(balance, 6);
-                document.getElementById('contract-balance').textContent = `${balanceUSDC} USDC`;
-                document.getElementById('available-prizes').textContent = `Available prizes: ${prizes.toString()}`;
-                
-            } catch (error) {
-                console.error('Contract info update error:', error);
-            }
-        }
-        
         function showStatus(message, type = 'info') {
             const statusDiv = document.getElementById('status-message');
             const statusText = document.getElementById('status-text');
@@ -552,11 +598,10 @@
             console.log(`Status (${type}):`, message);
         }
         
-        // Auto-refresh stats every 30 seconds
+        // Auto-refresh data every 30 seconds
         setInterval(() => {
-            if (contract && userAddress) {
-                updateGameStats();
-                updateContractInfo();
+            if (readOnlyProvider) {
+                loadInitialData();
             }
         }, 30000);
     </script>
