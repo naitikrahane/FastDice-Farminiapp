@@ -6,19 +6,6 @@
     <title>🎲 Fast Dice Game - Base Mainnet</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script type="importmap">
-    {
-      "imports": {
-        "wagmi": "https://esm.sh/wagmi@2.12.17",
-        "wagmi/chains": "https://esm.sh/wagmi@2.12.17/chains",
-        "viem": "https://esm.sh/viem@2.21.19",
-        "@farcaster/miniapp-wagmi-connector": "https://esm.sh/@farcaster/miniapp-wagmi-connector@0.1.7",
-        "@tanstack/react-query": "https://esm.sh/@tanstack/react-query@5.59.20",
-        "react": "https://esm.sh/react@18.3.1",
-        "react-dom": "https://esm.sh/react-dom@18.3.1"
-      }
-    }
-    </script>
     <style>
         .dice-glow { box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
         .winner-animation { animation: bounce 1s infinite; }
@@ -42,41 +29,135 @@
             </div>
         </div>
 
-        <!-- React App Container -->
-        <div id="react-app"></div>
+        <!-- Main Game Card -->
+        <div class="bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20">
+            
+            <!-- Wallet Section -->
+            <div id="wallet-section" class="text-center mb-8">
+                <button id="connect-btn" onclick="connectWallet()" 
+                        class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-xl">
+                    <span class="mr-2">🔗</span> Connect Wallet
+                </button>
+                
+                <div id="wallet-connected" style="display: none;" class="bg-green-500/20 border border-green-400/30 rounded-2xl p-4 mt-4">
+                    <p class="text-green-300 font-semibold mb-2">✅ Wallet Connected</p>
+                    <p id="wallet-address" class="text-white/70 text-sm font-mono"></p>
+                </div>
+            </div>
+
+            <!-- Game Stats -->
+            <div id="game-stats" class="grid grid-cols-3 gap-4 mb-8">
+                <div class="bg-black/20 rounded-xl p-3 text-center">
+                    <div id="total-games" class="text-2xl font-bold text-white">0</div>
+                    <div class="text-xs text-white/60">Total Games</div>
+                </div>
+                <div class="bg-black/20 rounded-xl p-3 text-center">
+                    <div id="total-wins" class="text-2xl font-bold text-green-400">0</div>
+                    <div class="text-xs text-white/60">Total Wins</div>
+                </div>
+                <div class="bg-black/20 rounded-xl p-3 text-center">
+                    <div id="win-rate" class="text-2xl font-bold text-yellow-400">0%</div>
+                    <div class="text-xs text-white/60">Win Rate</div>
+                </div>
+            </div>
+
+            <!-- Contract Balance -->
+            <div id="contract-info" class="bg-yellow-400/20 border border-yellow-400/40 rounded-2xl p-4 mb-6 text-center">
+                <p class="text-yellow-300 font-semibold">💰 Prize Pool</p>
+                <p id="contract-balance" class="text-white text-lg font-mono">Loading...</p>
+                <p id="available-prizes" class="text-yellow-200 text-sm">Available prizes: 0</p>
+            </div>
+
+            <!-- Cooldown Timer -->
+            <div id="cooldown-section" style="display: none;" class="bg-red-400/20 border border-red-400/40 rounded-2xl p-4 mb-6 text-center">
+                <p class="text-red-300 font-semibold">⏱️ Cooldown Active</p>
+                <p id="cooldown-timer" class="text-white text-2xl font-mono">0s</p>
+                <p class="text-red-200 text-sm">Wait before next game</p>
+            </div>
+
+            <!-- Dice Selection -->
+            <div id="game-section" style="display: none;">
+                <h3 class="text-white text-center font-bold text-xl mb-6">🎯 Choose Your Number (1-6)</h3>
+                
+                <div class="grid grid-cols-3 gap-4 mb-8">
+                    <button class="dice-btn bg-gradient-to-br from-red-400 to-red-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(1)">
+                        <div class="text-4xl">⚀</div>
+                        <div class="text-sm mt-1">1</div>
+                    </button>
+                    <button class="dice-btn bg-gradient-to-br from-orange-400 to-orange-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(2)">
+                        <div class="text-4xl">⚁</div>
+                        <div class="text-sm mt-1">2</div>
+                    </button>
+                    <button class="dice-btn bg-gradient-to-br from-yellow-400 to-yellow-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(3)">
+                        <div class="text-4xl">⚂</div>
+                        <div class="text-sm mt-1">3</div>
+                    </button>
+                    <button class="dice-btn bg-gradient-to-br from-green-400 to-green-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(4)">
+                        <div class="text-4xl">⚃</div>
+                        <div class="text-sm mt-1">4</div>
+                    </button>
+                    <button class="dice-btn bg-gradient-to-br from-blue-400 to-blue-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(5)">
+                        <div class="text-4xl">⚄</div>
+                        <div class="text-sm mt-1">5</div>
+                    </button>
+                    <button class="dice-btn bg-gradient-to-br from-purple-400 to-purple-600 text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110" onclick="selectNumber(6)">
+                        <div class="text-4xl">⚅</div>
+                        <div class="text-sm mt-1">6</div>
+                    </button>
+                </div>
+                
+                <button id="play-btn" onclick="playGame()" disabled
+                        class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-2xl font-bold text-xl hover:from-green-600 hover:to-emerald-700 transition-all transform hover:scale-105 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed">
+                    Select a number first
+                </button>
+            </div>
+
+            <!-- Game Result -->
+            <div id="result-section" style="display: none;" class="text-center mt-6">
+                <div id="result-card" class="rounded-2xl p-8 mb-6">
+                    <div id="result-icon" class="text-8xl mb-4"></div>
+                    <h3 id="result-title" class="font-bold text-2xl mb-4"></h3>
+                    <div class="grid grid-cols-2 gap-4 text-lg mb-4">
+                        <div class="bg-black/20 rounded-xl p-3">
+                            <p class="text-white/70 text-sm">Your Choice</p>
+                            <p id="user-choice" class="text-2xl font-bold text-yellow-300"></p>
+                        </div>
+                        <div class="bg-black/20 rounded-xl p-3">
+                            <p class="text-white/70 text-sm">Dice Result</p>
+                            <p id="dice-result" class="text-2xl font-bold text-yellow-300"></p>
+                        </div>
+                    </div>
+                    <div id="prize-info"></div>
+                </div>
+                
+                <button onclick="resetGame()" 
+                        class="w-full bg-gradient-to-r from-gray-500 to-gray-600 text-white py-4 rounded-2xl font-bold text-xl hover:from-gray-600 hover:to-gray-700 transition-all">
+                    🎲 Play Again
+                </button>
+            </div>
+        </div>
+        
+        <!-- Status Messages -->
+        <div id="status-message" class="mt-6 text-center" style="display: none;">
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
+                <p id="status-text" class="text-white"></p>
+            </div>
+        </div>
         
         <!-- Contract Info -->
         <div class="mt-6 text-center text-white/50 text-xs">
             <p class="mb-1">📄 FastDiceGame Contract</p>
-            <p>0xeA3F62030029DD99E487f6A3c415dc31e03337FD</p>
+            <p id="contract-address-display">Deploy and update address</p>
         </div>
     </div>
 
-    <script type="module">
-        import React, { useState, useEffect } from 'react';
-        import { createRoot } from 'react-dom';
-        import { http, createConfig } from 'wagmi';
-        import { base } from 'wagmi/chains';
-        import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
-        import { WagmiProvider, useAccount, useConnect, useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi';
-        import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-        import { parseEther, formatUnits } from 'viem';
-
-        // Wagmi Configuration (Official Farcaster Method)
-        const config = createConfig({
-            chains: [base],
-            transports: {
-                [base.id]: http(),
-            },
-            connectors: [
-                farcasterMiniApp()
-            ]
-        });
-
-        const queryClient = new QueryClient();
-
+    <script>
         // Contract Configuration
         const CONTRACT_ADDRESS = "0xeA3F62030029DD99E487f6A3c415dc31e03337FD";
+        const BASE_MAINNET_CHAIN_ID = 8453;
+        const BASE_RPC_URL = 'https://mainnet.base.org';
+        
+        // Contract ABI
         const CONTRACT_ABI = [
             "function play(uint256 chosenNumber) external",
             "function getCooldown(address player) external view returns (uint256)",
@@ -87,241 +168,578 @@
             "event GamePlayed(address indexed player, uint256 chosenNumber, uint256 rolledNumber, bool won)",
             "event PrizeClaimed(address indexed player, uint256 amount)"
         ];
-
-        // Dice Component
-        function DiceGame() {
-            const { isConnected, address } = useAccount();
-            const { connect, connectors } = useConnect();
-            const [selectedChoice, setSelectedChoice] = useState(0);
-            const [gameResult, setGameResult] = useState(null);
-            const [cooldown, setCooldown] = useState(0);
-
-            const diceSymbols = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-
-            // Contract Reads
-            const { data: gameStats } = useReadContract({
-                address: CONTRACT_ADDRESS,
-                abi: CONTRACT_ABI,
-                functionName: 'getGameStats',
-            });
-
-            const { data: contractBalance } = useReadContract({
-                address: CONTRACT_ADDRESS,
-                abi: CONTRACT_ABI,
-                functionName: 'getContractBalance',
-            });
-
-            const { data: availablePrizes } = useReadContract({
-                address: CONTRACT_ADDRESS,
-                abi: CONTRACT_ABI,
-                functionName: 'getAvailablePrizes',
-            });
-
-            const { data: playerCooldown } = useReadContract({
-                address: CONTRACT_ADDRESS,
-                abi: CONTRACT_ABI,
-                functionName: 'getCooldown',
-                args: address ? [address] : undefined,
-            });
-
-            // Contract Write
-            const { writeContract, data: hash, isPending, error } = useWriteContract();
-
-            // Transaction Receipt
-            const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-                hash,
-            });
-
-            // Cooldown timer
-            useEffect(() => {
-                if (playerCooldown && Number(playerCooldown) > 0) {
-                    setCooldown(Number(playerCooldown));
-                    const timer = setInterval(() => {
-                        setCooldown(prev => {
-                            if (prev <= 1) {
-                                clearInterval(timer);
-                                return 0;
-                            }
-                            return prev - 1;
-                        });
-                    }, 1000);
-                    return () => clearInterval(timer);
+        
+        // Game State
+        let provider, signer, contract, userAddress;
+        let readOnlyProvider;
+        let selectedChoice = 0;
+        let cooldownInterval;
+        let farcasterSdk = null;
+        
+        // Dice symbols
+        const diceSymbols = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+        
+        // Check if running in Farcaster Mini App
+        function isInFarcaster() {
+            return typeof window !== 'undefined' && (
+                window.parent !== window || // In iframe
+                window.location !== window.parent.location || // In frame
+                navigator.userAgent.includes('Farcaster') || // Farcaster browser
+                window.location.href.includes('farcaster') || // Farcaster domain
+                document.referrer.includes('farcaster') || // Referred from Farcaster
+                window.top !== window.self // In any frame
+            );
+        }
+        
+        // Initialize everything 
+        window.addEventListener('load', function() {
+            console.log('🎲 Fast Dice Game Loading...');
+            console.log('Is in Farcaster:', isInFarcaster());
+            
+            setTimeout(async () => {
+                console.log('Game initialized successfully');
+                document.getElementById('contract-address-display').textContent = CONTRACT_ADDRESS;
+                
+                // Initialize read-only provider immediately
+                await initReadOnlyProvider();
+                
+                // Wait for Farcaster SDK
+                await waitForFarcasterSDK();
+                
+            }, 200);
+        });
+        
+        // Wait for Farcaster SDK to be available
+        async function waitForFarcasterSDK() {
+            let attempts = 0;
+            const maxAttempts = 50; // 5 seconds max wait
+            
+            const checkSDK = () => {
+                if (window.sdk && window.sdk.actions) {
+                    farcasterSdk = window.sdk;
+                    console.log('✅ Farcaster SDK found!');
+                    farcasterSdk.actions.ready({ disableNativeGestures: true });
+                    return true;
                 }
-            }, [playerCooldown]);
-
-            const playGame = () => {
-                if (!selectedChoice || !isConnected) return;
-
-                writeContract({
-                    address: CONTRACT_ADDRESS,
-                    abi: CONTRACT_ABI,
-                    functionName: 'play',
-                    args: [selectedChoice],
-                });
+                return false;
             };
-
-            const resetGame = () => {
-                setGameResult(null);
-                setSelectedChoice(0);
-            };
-
-            if (!isConnected) {
-                return (
-                    React.createElement('div', { className: 'bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20' },
-                        React.createElement('div', { className: 'text-center mb-8' },
-                            React.createElement('button', {
-                                onClick: () => connect({ connector: connectors[0] }),
-                                className: 'bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-xl'
-                            }, 
-                                React.createElement('span', { className: 'mr-2' }, '🔗'),
-                                ' Connect Farcaster Wallet'
-                            )
-                        ),
-
-                        // Stats (always visible)
-                        React.createElement('div', { className: 'grid grid-cols-3 gap-4 mb-8' },
-                            React.createElement('div', { className: 'bg-black/20 rounded-xl p-3 text-center' },
-                                React.createElement('div', { className: 'text-2xl font-bold text-white' }, gameStats ? gameStats[0]?.toString() || '0' : '0'),
-                                React.createElement('div', { className: 'text-xs text-white/60' }, 'Total Games')
-                            ),
-                            React.createElement('div', { className: 'bg-black/20 rounded-xl p-3 text-center' },
-                                React.createElement('div', { className: 'text-2xl font-bold text-green-400' }, gameStats ? gameStats[1]?.toString() || '0' : '0'),
-                                React.createElement('div', { className: 'text-xs text-white/60' }, 'Total Wins')
-                            ),
-                            React.createElement('div', { className: 'bg-black/20 rounded-xl p-3 text-center' },
-                                React.createElement('div', { className: 'text-2xl font-bold text-yellow-400' }, gameStats ? gameStats[2]?.toString() + '%' || '0%' : '0%'),
-                                React.createElement('div', { className: 'text-xs text-white/60' }, 'Win Rate')
-                            )
-                        ),
-
-                        // Contract Balance
-                        React.createElement('div', { className: 'bg-yellow-400/20 border border-yellow-400/40 rounded-2xl p-4 text-center' },
-                            React.createElement('p', { className: 'text-yellow-300 font-semibold' }, '💰 Prize Pool'),
-                            React.createElement('p', { className: 'text-white text-lg font-mono' }, contractBalance ? `${formatUnits(contractBalance, 6)} USDC` : 'Loading...'),
-                            React.createElement('p', { className: 'text-yellow-200 text-sm' }, `Available prizes: ${availablePrizes?.toString() || '0'}`)
-                        )
-                    )
-                );
+            
+            // Check immediately
+            if (checkSDK()) return;
+            
+            // Poll for SDK availability
+            return new Promise((resolve) => {
+                const interval = setInterval(() => {
+                    attempts++;
+                    if (checkSDK() || attempts >= maxAttempts) {
+                        clearInterval(interval);
+                        if (attempts >= maxAttempts) {
+                            console.warn('⚠️ Farcaster SDK not found after waiting');
+                        }
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
+        
+        // Initialize read-only provider for contract reading
+        async function initReadOnlyProvider() {
+            try {
+                readOnlyProvider = new ethers.providers.JsonRpcProvider(BASE_RPC_URL);
+                await readOnlyProvider.getNetwork();
+                console.log('✅ Read-only provider connected');
+                await loadInitialData();
+            } catch (error) {
+                console.error('❌ Failed to initialize read-only provider:', error);
+                showStatus('⚠️ Unable to load contract data', 'info');
             }
-
-            return (
-                React.createElement('div', { className: 'bg-white/10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/20' },
-                    
-                    // Connected Status
-                    React.createElement('div', { className: 'bg-green-500/20 border border-green-400/30 rounded-2xl p-4 mb-8 text-center' },
-                        React.createElement('p', { className: 'text-green-300 font-semibold mb-2' }, '✅ Farcaster Wallet Connected'),
-                        React.createElement('p', { className: 'text-white/70 text-sm font-mono' }, address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '')
-                    ),
-
-                    // Stats
-                    React.createElement('div', { className: 'grid grid-cols-3 gap-4 mb-8' },
-                        React.createElement('div', { className: 'bg-black/20 rounded-xl p-3 text-center' },
-                            React.createElement('div', { className: 'text-2xl font-bold text-white' }, gameStats ? gameStats[0]?.toString() || '0' : '0'),
-                            React.createElement('div', { className: 'text-xs text-white/60' }, 'Total Games')
-                        ),
-                        React.createElement('div', { className: 'bg-black/20 rounded-xl p-3 text-center' },
-                            React.createElement('div', { className: 'text-2xl font-bold text-green-400' }, gameStats ? gameStats[1]?.toString() || '0' : '0'),
-                            React.createElement('div', { className: 'text-xs text-white/60' }, 'Total Wins')
-                        ),
-                        React.createElement('div', { className: 'bg-black/20 rounded-xl p-3 text-center' },
-                            React.createElement('div', { className: 'text-2xl font-bold text-yellow-400' }, gameStats ? gameStats[2]?.toString() + '%' || '0%' : '0%'),
-                            React.createElement('div', { className: 'text-xs text-white/60' }, 'Win Rate')
-                        )
-                    ),
-
-                    // Contract Balance
-                    React.createElement('div', { className: 'bg-yellow-400/20 border border-yellow-400/40 rounded-2xl p-4 mb-6 text-center' },
-                        React.createElement('p', { className: 'text-yellow-300 font-semibold' }, '💰 Prize Pool'),
-                        React.createElement('p', { className: 'text-white text-lg font-mono' }, contractBalance ? `${formatUnits(contractBalance, 6)} USDC` : 'Loading...'),
-                        React.createElement('p', { className: 'text-yellow-200 text-sm' }, `Available prizes: ${availablePrizes?.toString() || '0'}`)
-                    ),
-
-                    // Cooldown Timer
-                    cooldown > 0 && React.createElement('div', { className: 'bg-red-400/20 border border-red-400/40 rounded-2xl p-4 mb-6 text-center' },
-                        React.createElement('p', { className: 'text-red-300 font-semibold' }, '⏱️ Cooldown Active'),
-                        React.createElement('p', { className: 'text-white text-2xl font-mono' }, `${cooldown}s`),
-                        React.createElement('p', { className: 'text-red-200 text-sm' }, 'Wait before next game')
-                    ),
-
-                    // Game Section (only if no cooldown)
-                    cooldown === 0 && !gameResult && React.createElement('div', null,
-                        React.createElement('h3', { className: 'text-white text-center font-bold text-xl mb-6' }, '🎯 Choose Your Number (1-6)'),
+        }
+        
+        // Load initial contract data
+        async function loadInitialData() {
+            if (!readOnlyProvider) return;
+            
+            try {
+                const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider);
+                
+                // Load with comprehensive error handling
+                let games = '0', wins = '0', winRate = '0', balance = '0', prizes = '0';
+                
+                try {
+                    console.log('📊 Loading game stats...');
+                    const [gamesResult, winsResult, winRateResult] = await readOnlyContract.getGameStats();
+                    games = gamesResult.toString();
+                    wins = winsResult.toString();
+                    winRate = winRateResult.toString();
+                    console.log('✅ Game stats loaded:', { games, wins, winRate });
+                } catch (error) {
+                    console.error('❌ Failed to load game stats:', error);
+                }
+                
+                try {
+                    console.log('💰 Loading contract balance...');
+                    const balanceResult = await readOnlyContract.getContractBalance();
+                    balance = ethers.utils.formatUnits(balanceResult, 6);
+                    console.log('✅ Contract balance loaded:', balance);
+                } catch (error) {
+                    console.error('❌ Failed to load contract balance:', error);
+                }
+                
+                try {
+                    console.log('🎁 Loading available prizes...');
+                    const prizesResult = await readOnlyContract.getAvailablePrizes();
+                    prizes = prizesResult.toString();
+                    console.log('✅ Available prizes loaded:', prizes);
+                } catch (error) {
+                    console.error('❌ Failed to load available prizes:', error);
+                }
+                
+                // Update UI
+                document.getElementById('total-games').textContent = games;
+                document.getElementById('total-wins').textContent = wins;
+                document.getElementById('win-rate').textContent = winRate + '%';
+                document.getElementById('contract-balance').textContent = `${balance} USDC`;
+                document.getElementById('available-prizes').textContent = `Available prizes: ${prizes}`;
+                
+                console.log('✅ All initial data loaded successfully');
+                
+            } catch (error) {
+                console.error('❌ Failed to load initial data:', error);
+                document.getElementById('contract-balance').textContent = 'Unavailable';
+                document.getElementById('available-prizes').textContent = 'Loading failed';
+                showStatus('⚠️ Contract data partially unavailable', 'info');
+            }
+        }
+        
+        // Enhanced wallet connection with better Farcaster support
+        async function connectWallet() {
+            try {
+                console.log('🔌 Attempting wallet connection...');
+                console.log('SDK available:', !!farcasterSdk);
+                console.log('In Farcaster:', isInFarcaster());
+                console.log('User agent:', navigator.userAgent.substring(0, 100));
+                
+                // If we're in Farcaster and have SDK, try Farcaster wallet first
+                if (farcasterSdk && farcasterSdk.wallet) {
+                    try {
+                        showStatus('🔌 Connecting Farcaster wallet...', 'info');
+                        console.log('🎯 Trying Farcaster wallet integration...');
                         
-                        React.createElement('div', { className: 'grid grid-cols-3 gap-4 mb-8' },
-                            [1,2,3,4,5,6].map(num => 
-                                React.createElement('button', {
-                                    key: num,
-                                    onClick: () => setSelectedChoice(num),
-                                    className: `dice-btn bg-gradient-to-br ${getButtonColor(num)} text-white text-3xl font-bold aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110 ${selectedChoice === num ? 'ring-4 ring-yellow-400' : ''}`
+                        const walletProvider = await farcasterSdk.wallet.getEthereumProvider();
+                        console.log('Farcaster provider result:', !!walletProvider);
+                        
+                        if (walletProvider) {
+                            console.log('✅ Farcaster wallet provider obtained');
+                            
+                            // Create enhanced provider wrapper for compatibility
+                            const enhancedProvider = {
+                                ...walletProvider,
+                                isMetaMask: false,
+                                isFarcaster: true,
+                                request: walletProvider.request || walletProvider.send,
+                                send: walletProvider.send || walletProvider.request,
+                                // Add compatibility methods
+                                enable: async () => {
+                                    return await walletProvider.request({ method: 'eth_requestAccounts' });
                                 },
-                                    React.createElement('div', { className: 'text-4xl' }, diceSymbols[num-1]),
-                                    React.createElement('div', { className: 'text-sm mt-1' }, num)
-                                )
-                            )
-                        ),
+                                // Network detection
+                                getNetwork: async () => ({ chainId: BASE_MAINNET_CHAIN_ID, name: 'base' }),
+                            };
+                            
+                            provider = new ethers.providers.Web3Provider(enhancedProvider);
+                            signer = provider.getSigner();
+                            userAddress = await signer.getAddress();
+                            
+                            console.log('✅ Farcaster wallet connected successfully:', userAddress);
+                            
+                            // Verify network (assume Base Mainnet for Farcaster)
+                            try {
+                                const network = await provider.getNetwork();
+                                console.log('📡 Network info:', network);
+                                if (network.chainId !== BASE_MAINNET_CHAIN_ID) {
+                                    console.warn('⚠️ Network mismatch, but continuing with Farcaster wallet');
+                                }
+                            } catch (networkError) {
+                                console.log('ℹ️ Network check skipped for Farcaster wallet');
+                            }
+                            
+                            // Setup contract with signer for transactions
+                            contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                            
+                            // Update UI
+                            updateWalletUI('Farcaster');
+                            await checkCooldown();
+                            
+                            showStatus('✅ Farcaster wallet connected successfully!', 'success');
+                            return;
+                        } else {
+                            console.log('❌ No Farcaster wallet provider returned');
+                        }
+                    } catch (farcasterError) {
+                        console.error('❌ Farcaster wallet connection failed:', farcasterError);
+                        showStatus('⚠️ Farcaster wallet unavailable. Trying MetaMask...', 'info');
+                    }
+                }
+                
+                // Fallback to MetaMask/External Wallet
+                console.log('🦊 Trying MetaMask/External wallet fallback...');
+                if (typeof window.ethereum === 'undefined') {
+                    const message = isInFarcaster() ? 
+                        '❌ Farcaster wallet not available. Please update your Farcaster app or try opening in browser.' :
+                        '❌ No wallet found! Please install MetaMask or open in Farcaster app.';
+                    showStatus(message, 'error');
+                    return;
+                }
+                
+                showStatus('🔌 Connecting external wallet...', 'info');
+                
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                userAddress = await signer.getAddress();
+                
+                console.log('✅ External wallet connected:', userAddress);
+                
+                // Check and switch network if needed
+                const network = await provider.getNetwork();
+                console.log('📡 Current network:', network);
+                
+                if (network.chainId !== BASE_MAINNET_CHAIN_ID) {
+                    showStatus('🔄 Switching to Base Mainnet...', 'info');
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: '0x2105' }] // Base Mainnet
+                        });
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        console.log('✅ Network switched to Base Mainnet');
+                    } catch (switchError) {
+                        console.error('❌ Network switch failed:', switchError);
+                        showStatus('❌ Please manually switch to Base Mainnet network', 'error');
+                        throw switchError;
+                    }
+                }
+                
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                updateWalletUI('MetaMask');
+                await checkCooldown();
+                
+                showStatus('✅ External wallet connected successfully!', 'success');
+                
+            } catch (error) {
+                console.error('❌ Complete wallet connection failure:', error);
+                showStatus('❌ Failed to connect wallet: ' + (error.message || 'Unknown error'), 'error');
+            }
+        }
+        
+        // Update wallet UI
+        function updateWalletUI(walletType = 'Wallet') {
+            document.getElementById('connect-btn').style.display = 'none';
+            document.getElementById('wallet-connected').style.display = 'block';
+            document.getElementById('wallet-address').textContent = 
+                userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : 'Unknown';
+            document.getElementById('game-section').style.display = 'block';
+            
+            // Update connection status text
+            const statusElement = document.querySelector('#wallet-connected p');
+            if (statusElement) {
+                statusElement.textContent = `✅ ${walletType} Connected`;
+            }
+            
+            console.log(`✅ UI updated for ${walletType} connection`);
+        }
+        
+        function selectNumber(number) {
+            selectedChoice = number;
+            
+            // Update visual selection
+            document.querySelectorAll('.dice-btn').forEach(btn => {
+                btn.classList.remove('dice-glow', 'ring-4', 'ring-yellow-400');
+            });
+            
+            event.target.classList.add('dice-glow', 'ring-4', 'ring-yellow-400');
+            
+            // Update play button
+            document.getElementById('play-btn').disabled = false;
+            document.getElementById('play-btn').textContent = `🎲 Roll Dice: ${number}`;
+            
+            console.log('🎯 Number selected:', number);
+        }
+        
+        async function playGame() {
+            if (!selectedChoice || !userAddress || !contract) {
+                console.log('❌ Cannot play: missing requirements', { selectedChoice, userAddress: !!userAddress, contract: !!contract });
+                return;
+            }
+            
+            try {
+                console.log('🎲 Starting game with choice:', selectedChoice);
+                showStatus('🎲 Rolling dice...', 'info');
+                document.getElementById('play-btn').disabled = true;
+                document.getElementById('play-btn').textContent = '🎲 Rolling...';
+                
+                // Send transaction
+                console.log('📤 Sending transaction to contract...');
+                const tx = await contract.play(selectedChoice);
+                console.log('✅ Transaction sent:', tx.hash);
+                showStatus('⏳ Transaction sent, waiting for confirmation...', 'info');
+                
+                // Wait for confirmation
+                const receipt = await tx.wait();
+                console.log('✅ Transaction confirmed:', receipt.transactionHash);
+                
+                // Parse events from receipt
+                const gameEvent = receipt.events?.find(event => event.event === 'GamePlayed');
+                
+                if (gameEvent) {
+                    const [player, chosenNumber, rolledNumber, won] = gameEvent.args;
+                    const gameResult = {
+                        player: player,
+                        chosen: chosenNumber.toNumber(),
+                        rolled: rolledNumber.toNumber(),
+                        won: won
+                    };
+                    
+                    console.log('🎮 Game result:', gameResult);
+                    await showGameResult(gameResult.chosen, gameResult.rolled, gameResult.won);
+                } else {
+                    console.warn('⚠️ No GamePlayed event found in receipt');
+                    showStatus('⚠️ Game completed but result unclear. Check blockchain explorer.', 'warning');
+                }
+                
+                // Refresh data
+                await loadInitialData();
+                await checkCooldown();
+                
+            } catch (error) {
+                console.error('❌ Game play error:', error);
+                
+                if (error.message.includes('Wait 10 seconds') || error.message.includes('Cooldown')) {
+                    showStatus('⏱️ Wait 10 seconds between games!', 'error');
+                    await checkCooldown();
+                } else if (error.message.includes('Insufficient funds') || error.message.includes('balance')) {
+                    showStatus('💰 Contract has insufficient USDC for prizes!', 'error');
+                } else if (error.message.includes('rejected') || error.message.includes('denied')) {
+                    showStatus('❌ Transaction rejected by user', 'error');
+                } else {
+                    showStatus('❌ Game failed: ' + (error.message || 'Unknown error'), 'error');
+                }
+                
+                // Re-enable play button
+                document.getElementById('play-btn').disabled = false;
+                document.getElementById('play-btn').textContent = `🎲 Roll Dice: ${selectedChoice}`;
+            }
+        }
+        
+        async function showGameResult(chosenNumber, rolledNumber, won) {
+            console.log('🎮 Displaying game result:', { chosenNumber, rolledNumber, won });
+            
+            // Hide game section, show result
+            document.getElementById('game-section').style.display = 'none';
+            document.getElementById('result-section').style.display = 'block';
+            
+            const resultCard = document.getElementById('result-card');
+            const resultIcon = document.getElementById('result-icon');
+            const resultTitle = document.getElementById('result-title');
+            const prizeInfo = document.getElementById('prize-info');
+            
+            // Display choices and result
+            document.getElementById('user-choice').innerHTML = `${chosenNumber}<br>${diceSymbols[chosenNumber-1]}`;
+            document.getElementById('dice-result').innerHTML = `${rolledNumber}<br>${diceSymbols[rolledNumber-1]}`;
+            
+            if (won) {
+                // Winner animation and styling
+                resultCard.className = 'winner-animation bg-green-400/20 border-2 border-green-400 rounded-2xl p-8 mb-6';
+                resultIcon.textContent = '🎉';
+                resultTitle.innerHTML = '<span class="text-green-300">JACKPOT! YOU WON!</span>';
+                prizeInfo.innerHTML = `
+                    <div class="bg-yellow-400/20 border border-yellow-400/40 rounded-xl p-4">
+                        <p class="text-yellow-300 font-bold text-lg">🏆 Prize: 0.01 USDC</p>
+                        <p class="text-white/80 text-sm mt-1">Prize sent to your wallet!</p>
+                    </div>
+                `;
+                showStatus('🎉 Congratulations! You won 0.01 USDC!', 'success');
+                
+                // Trigger celebration sound/haptic if available
+                if (farcasterSdk && farcasterSdk.actions && farcasterSdk.actions.haptic) {
+                    try {
+                        farcasterSdk.actions.haptic({ type: 'success' });
+                    } catch (e) {
+                        console.log('Haptic feedback not available');
+                    }
+                }
+            } else {
+                // Loss styling
+                resultCard.className = 'bg-red-400/20 border-2 border-red-400 rounded-2xl p-8 mb-6';
+                resultIcon.textContent = '😔';
+                resultTitle.innerHTML = '<span class="text-red-300">Not This Time!</span>';
+                prizeInfo.innerHTML = `
+                    <div class="bg-gray-400/20 border border-gray-400/40 rounded-xl p-4">
+                        <p class="text-gray-300">Better luck next roll!</p>
+                        <p class="text-white/60 text-sm mt-1">Try again in 10 seconds</p>
+                    </div>
+                `;
+                showStatus('😔 No win this time. Try again in 10 seconds!', 'info');
+            }
+        }
+        
+        function resetGame() {
+            console.log('🔄 Resetting game...');
+            
+            // Reset UI state
+            document.getElementById('result-section').style.display = 'none';
+            document.getElementById('game-section').style.display = 'block';
+            
+            // Clear selection
+            selectedChoice = 0;
+            document.querySelectorAll('.dice-btn').forEach(btn => {
+                btn.classList.remove('dice-glow', 'ring-4', 'ring-yellow-400');
+            });
+            
+            // Reset play button
+            document.getElementById('play-btn').disabled = true;
+            document.getElementById('play-btn').textContent = 'Select a number first';
+            
+            // Check cooldown status
+            checkCooldown();
+            
+            console.log('✅ Game reset complete');
+        }
+        
+        async function checkCooldown() {
+            if (!userAddress) {
+                console.log('ℹ️ No user address for cooldown check');
+                return;
+            }
+            
+            try {
+                console.log('⏰ Checking cooldown for user:', userAddress);
+                
+                // Use read-only provider for cooldown check to avoid wallet popups
+                const checkContract = readOnlyProvider ? 
+                    new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider) : 
+                    contract;
+                
+                if (!checkContract) {
+                    console.log('❌ No contract available for cooldown check');
+                    return;
+                }
+                
+                const cooldownTime = await checkContract.getCooldown(userAddress);
+                const cooldownSeconds = cooldownTime.toNumber();
+                
+                console.log('⏰ Cooldown remaining:', cooldownSeconds, 'seconds');
+                
+                if (cooldownSeconds > 0) {
+                    // Show cooldown UI
+                    document.getElementById('cooldown-section').style.display = 'block';
+                    document.getElementById('game-section').style.display = 'none';
+                    
+                    // Start cooldown timer
+                    let remaining = cooldownSeconds;
+                    if (cooldownInterval) {
+                        clearInterval(cooldownInterval);
+                    }
+                    
+                    cooldownInterval = setInterval(() => {
+                        document.getElementById('cooldown-timer').textContent = `${remaining}s`;
+                        remaining--;
                         
-                        React.createElement('button', {
-                            onClick: playGame,
-                            disabled: !selectedChoice || isPending || isConfirming,
-                            className: 'w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-2xl font-bold text-xl hover:from-green-600 hover:to-emerald-700 transition-all transform hover:scale-105 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed'
-                        }, isPending ? '🎲 Rolling...' : isConfirming ? '⏳ Confirming...' : selectedChoice ? `🎲 Roll Dice: ${selectedChoice}` : 'Select a number first')
-                    ),
-
-                    // Transaction Status
-                    hash && React.createElement('div', { className: 'mt-4 text-center' },
-                        React.createElement('p', { className: 'text-white/70 text-sm' }, `Transaction: ${hash.slice(0, 10)}...`),
-                        isConfirming && React.createElement('p', { className: 'text-yellow-300' }, '⏳ Waiting for confirmation...'),
-                        isConfirmed && React.createElement('p', { className: 'text-green-300' }, '✅ Transaction confirmed!')
-                    ),
-
-                    // Error Display
-                    error && React.createElement('div', { className: 'mt-4 bg-red-400/20 border border-red-400/40 rounded-xl p-4 text-center' },
-                        React.createElement('p', { className: 'text-red-300 font-semibold' }, '❌ Error'),
-                        React.createElement('p', { className: 'text-white text-sm' }, error.message || 'Transaction failed')
-                    )
-                )
-            );
+                        if (remaining < 0) {
+                            clearInterval(cooldownInterval);
+                            document.getElementById('cooldown-section').style.display = 'none';
+                            document.getElementById('game-section').style.display = 'block';
+                            console.log('✅ Cooldown expired, game available');
+                        }
+                    }, 1000);
+                } else {
+                    // No cooldown, hide cooldown section
+                    document.getElementById('cooldown-section').style.display = 'none';
+                    if (cooldownInterval) {
+                        clearInterval(cooldownInterval);
+                    }
+                    console.log('✅ No cooldown, game ready');
+                }
+                
+            } catch (error) {
+                console.error('❌ Cooldown check error:', error);
+                // Don't show error to user, just log it
+            }
         }
-
-        function getButtonColor(num) {
-            const colors = [
-                'from-red-400 to-red-600',
-                'from-orange-400 to-orange-600', 
-                'from-yellow-400 to-yellow-600',
-                'from-green-400 to-green-600',
-                'from-blue-400 to-blue-600',
-                'from-purple-400 to-purple-600'
-            ];
-            return colors[num-1];
+        
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status-message');
+            const statusText = document.getElementById('status-text');
+            
+            statusText.textContent = message;
+            statusDiv.style.display = 'block';
+            
+            // Auto-hide non-error messages
+            if (type !== 'error') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 6000);
+            }
+            
+            // Color coding for different message types
+            const messageElement = statusDiv.querySelector('div');
+            messageElement.className = `bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-white/20`;
+            
+            if (type === 'error') {
+                messageElement.classList.add('border-red-400/40', 'bg-red-400/10');
+            } else if (type === 'success') {
+                messageElement.classList.add('border-green-400/40', 'bg-green-400/10');
+            } else if (type === 'warning') {
+                messageElement.classList.add('border-yellow-400/40', 'bg-yellow-400/10');
+            }
+            
+            console.log(`Status (${type}):`, message);
         }
+        
+        // Auto-refresh contract data every 30 seconds
+        setInterval(() => {
+            if (readOnlyProvider) {
+                console.log('🔄 Auto-refreshing contract data...');
+                loadInitialData();
+            }
+        }, 30000);
+        
+        // Error handling for unhandled promise rejections
+        window.addEventListener('unhandledrejection', event => {
+            console.error('❌ Unhandled promise rejection:', event.reason);
+            event.preventDefault();
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (cooldownInterval) {
+                clearInterval(cooldownInterval);
+            }
+        });
+    </script>
 
-        // Main App Component
-        function App() {
-            return React.createElement(WagmiProvider, { config },
-                React.createElement(QueryClientProvider, { client: queryClient },
-                    React.createElement(DiceGame)
-                )
-            );
-        }
-
-        // Initialize Farcaster SDK and React
-        async function initializeApp() {
-            // Wait for Farcaster SDK
+    <!-- Farcaster SDK Integration -->
+    <script type="module">
+        try {
             const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk');
+            window.sdk = sdk;
             
-            // Initialize Farcaster
+            // Initialize SDK
             await sdk.actions.ready({ disableNativeGestures: true });
-            console.log('✅ Farcaster SDK initialized');
-
-            // Mount React App
-            const root = createRoot(document.getElementById('react-app'));
-            root.render(React.createElement(App));
+            console.log('✅ Farcaster SDK initialized successfully');
             
-            console.log('✅ React App mounted with Wagmi');
+            // Optional: Log SDK capabilities
+            if (sdk.context) {
+                console.log('📱 Farcaster context available');
+            }
+            if (sdk.wallet) {
+                console.log('🔗 Farcaster wallet integration available');
+            }
+            
+        } catch (error) {
+            console.error('❌ Farcaster SDK initialization failed:', error);
+            console.log('ℹ️ App will continue without Farcaster integration');
         }
-
-        // Start the app
-        initializeApp().catch(console.error);
     </script>
 
 </body>
