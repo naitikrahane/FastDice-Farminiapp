@@ -46,7 +46,7 @@
             </div>
 
             <!-- Game Stats -->
-            <div id="game-stats" style="display: none;" class="grid grid-cols-3 gap-4 mb-8">
+            <div id="game-stats" class="grid grid-cols-3 gap-4 mb-8">
                 <div class="bg-black/20 rounded-xl p-3 text-center">
                     <div id="total-games" class="text-2xl font-bold text-white">0</div>
                     <div class="text-xs text-white/60">Total Games</div>
@@ -62,7 +62,7 @@
             </div>
 
             <!-- Contract Balance -->
-            <div id="contract-info" style="display: none;" class="bg-yellow-400/20 border border-yellow-400/40 rounded-2xl p-4 mb-6 text-center">
+            <div id="contract-info" class="bg-yellow-400/20 border border-yellow-400/40 rounded-2xl p-4 mb-6 text-center">
                 <p class="text-yellow-300 font-semibold">💰 Prize Pool</p>
                 <p id="contract-balance" class="text-white text-lg font-mono">Loading...</p>
                 <p id="available-prizes" class="text-yellow-200 text-sm">Available prizes: 0</p>
@@ -192,13 +192,8 @@
         const CONTRACT_ADDRESS = "0xeA3F62030029DD99E487f6A3c415dc31e03337FD";
         const BASE_MAINNET_CHAIN_ID = 8453;
         
-        // RPC Fallback URLs for Base Mainnet
-        const BASE_RPC_URLS = [
-            'https://mainnet.base.org',
-            'https://base-mainnet.public.blastapi.io',
-            'https://base.gateway.tenderly.co',
-            'https://base-rpc.publicnode.com'
-        ];
+        // Use Base's official RPC
+        const BASE_RPC_URL = 'https://mainnet.base.org';
         
         // Contract ABI
         const CONTRACT_ABI = [
@@ -221,33 +216,17 @@
         // Dice symbols
         const diceSymbols = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
         
-        // Create read-only provider with fallback
-        async function createReadOnlyProvider() {
-            for (let rpcUrl of BASE_RPC_URLS) {
-                try {
-                    const testProvider = new ethers.providers.JsonRpcProvider(rpcUrl);
-                    await testProvider.getNetwork(); // Test connection
-                    console.log('Connected to RPC:', rpcUrl);
-                    return testProvider;
-                } catch (error) {
-                    console.log('RPC failed:', rpcUrl, error.message);
-                    continue;
-                }
-            }
-            throw new Error('All RPC endpoints failed');
-        }
-        
         // Initialize everything 
         window.addEventListener('load', function() {
             console.log('Page loaded');
             initFarcaster();
             
-            setTimeout(() => {
+            setTimeout(async () => {
                 console.log('Game initialized successfully');
                 document.getElementById('contract-address-display').textContent = CONTRACT_ADDRESS || 'Please update contract address';
                 
-                // Initialize read-only provider for contract calls
-                initReadOnlyProvider();
+                // Initialize read-only provider immediately
+                await initReadOnlyProvider();
                 
                 // Notify Farcaster SDK that app is ready 
                 if (typeof sdk !== 'undefined' && sdk.actions && sdk.actions.ready) {
@@ -268,15 +247,18 @@
             }, 200);
         });
         
-        // Initialize read-only provider for contract reading
+        // Initialize read-only provider for contract reading (ALWAYS AVAILABLE)
         async function initReadOnlyProvider() {
             try {
-                readOnlyProvider = await createReadOnlyProvider();
-                // Load initial contract data
+                readOnlyProvider = new ethers.providers.JsonRpcProvider(BASE_RPC_URL);
+                await readOnlyProvider.getNetwork(); // Test connection
+                console.log('Read-only provider connected');
+                
+                // Load initial contract data immediately
                 await loadInitialData();
             } catch (error) {
                 console.error('Failed to initialize read-only provider:', error);
-                showStatus('⚠️ Unable to load contract data. Some features may not work.', 'info');
+                showStatus('⚠️ Unable to load contract data', 'info');
             }
         }
         
@@ -287,33 +269,50 @@
             try {
                 const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider);
                 
-                // Load stats and balance
-                const [games, wins, winRate] = await readOnlyContract.getGameStats();
-                const balance = await readOnlyContract.getContractBalance();
-                const prizes = await readOnlyContract.getAvailablePrizes();
+                // Load stats and balance with error handling for each call
+                let games = '0', wins = '0', winRate = '0';
+                let balance = '0', prizes = '0';
+                
+                try {
+                    const [gamesResult, winsResult, winRateResult] = await readOnlyContract.getGameStats();
+                    games = gamesResult.toString();
+                    wins = winsResult.toString();
+                    winRate = winRateResult.toString();
+                } catch (error) {
+                    console.error('Failed to load game stats:', error);
+                }
+                
+                try {
+                    const balanceResult = await readOnlyContract.getContractBalance();
+                    balance = ethers.utils.formatUnits(balanceResult, 6);
+                } catch (error) {
+                    console.error('Failed to load contract balance:', error);
+                }
+                
+                try {
+                    const prizesResult = await readOnlyContract.getAvailablePrizes();
+                    prizes = prizesResult.toString();
+                } catch (error) {
+                    console.error('Failed to load available prizes:', error);
+                }
                 
                 // Update UI
-                document.getElementById('total-games').textContent = games.toString();
-                document.getElementById('total-wins').textContent = wins.toString();
-                document.getElementById('win-rate').textContent = winRate.toString() + '%';
-                
-                const balanceUSDC = ethers.utils.formatUnits(balance, 6);
-                document.getElementById('contract-balance').textContent = `${balanceUSDC} USDC`;
-                document.getElementById('available-prizes').textContent = `Available prizes: ${prizes.toString()}`;
-                
-                // Show stats
-                document.getElementById('game-stats').style.display = 'grid';
-                document.getElementById('contract-info').style.display = 'block';
+                document.getElementById('total-games').textContent = games;
+                document.getElementById('total-wins').textContent = wins;
+                document.getElementById('win-rate').textContent = winRate + '%';
+                document.getElementById('contract-balance').textContent = `${balance} USDC`;
+                document.getElementById('available-prizes').textContent = `Available prizes: ${prizes}`;
                 
                 console.log('Initial data loaded successfully');
                 
             } catch (error) {
                 console.error('Failed to load initial data:', error);
-                showStatus('⚠️ Contract data unavailable. Check your connection.', 'info');
+                document.getElementById('contract-balance').textContent = 'Unavailable';
+                document.getElementById('available-prizes').textContent = 'Loading failed';
             }
         }
         
-        // Connect wallet with better error handling
+        // Connect wallet with limited method support handling
         async function connectWallet() {
             try {
                 // First try Farcaster SDK wallet if available
@@ -321,20 +320,21 @@
                     try {
                         showStatus('🔌 Connecting Farcaster wallet...', 'info');
                         
-                        // Use the correct API: sdk.wallet.getEthereumProvider()
                         const walletProvider = await farcasterSdk.wallet.getEthereumProvider();
                         
                         if (walletProvider) {
-                            provider = new ethers.providers.Web3Provider(walletProvider);
+                            // Create a limited provider wrapper that only supports essential methods
+                            const limitedProvider = {
+                                ...walletProvider,
+                                // Override methods that might not be supported
+                                getNetwork: async () => ({ chainId: BASE_MAINNET_CHAIN_ID, name: 'base' }),
+                                send: walletProvider.request || walletProvider.send,
+                                request: walletProvider.request || walletProvider.send
+                            };
+                            
+                            provider = new ethers.providers.Web3Provider(limitedProvider);
                             signer = provider.getSigner();
                             userAddress = await signer.getAddress();
-                            
-                            // Check network
-                            const network = await provider.getNetwork();
-                            if (network.chainId !== BASE_MAINNET_CHAIN_ID) {
-                                showStatus('❌ Please switch to Base Mainnet in your wallet', 'error');
-                                return;
-                            }
                             
                             // Setup contract with signer for transactions
                             contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
@@ -355,7 +355,8 @@
                             return;
                         }
                     } catch (farcasterError) {
-                        console.log('Farcaster wallet not available, trying MetaMask:', farcasterError);
+                        console.log('Farcaster wallet error:', farcasterError);
+                        showStatus('⚠️ Farcaster wallet connection failed. Using fallback.', 'info');
                     }
                 }
                 
