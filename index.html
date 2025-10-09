@@ -886,7 +886,7 @@
             const resultEmoji = lastGameResult.won ? '🎉' : '😔';
             const resultText = lastGameResult.won ? 'WON 0.01 USDC!' : 'Better luck next time!';
             
-            const shareText = `${resultEmoji} Just played Fast Dice Game on Base!\n\n🎯 My choice: ${lastGameResult.chosen} ${diceSymbols[lastGameResult.chosen-1]}\n🎲 Dice rolled: ${lastGameResult.rolled} ${diceSymbols[lastGameResult.rolled-1]}\n\n${resultText}\n\nPlay now: ${gameUrl}\n\n#DiceGame #BaseCrypto #Web3Gaming`;
+            const shareText = `${resultEmoji} Just played Fast Dice Game on Base!\n\n🎯 My choice: ${lastGameResult.chosen} ${diceSymbols[lastGameResult.chosen-1]}\n🎲 Dice rolled: ${lastGameResult.rolled} ${diceSymbols[lastGameResult.rolled-1]}\n\n${resultText}\n\nPlay now: ${gameUrl}\n\n/farcaster`;
             
             try {
                 if (farcasterSdk && farcasterSdk.actions && farcasterSdk.actions.openUrl) {
