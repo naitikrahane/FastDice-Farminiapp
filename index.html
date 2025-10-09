@@ -34,13 +34,13 @@
             
             <!-- Wallet Section -->
             <div id="wallet-section" class="text-center mb-8">
-                <button id="connect-btn" onclick="connectWallet()" 
+                <button id="connect-btn" onclick="connectFarcasterWallet()" 
                         class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-xl">
-                    <span class="mr-2">🔗</span> Connect Wallet
+                    <span class="mr-2">🔗</span> Connect Farcaster Wallet
                 </button>
                 
                 <div id="wallet-connected" style="display: none;" class="bg-green-500/20 border border-green-400/30 rounded-2xl p-4 mt-4">
-                    <p class="text-green-300 font-semibold mb-2">✅ Wallet Connected</p>
+                    <p class="text-green-300 font-semibold mb-2">✅ Farcaster Wallet Connected</p>
                     <p id="wallet-address" class="text-white/70 text-sm font-mono"></p>
                 </div>
             </div>
@@ -160,6 +160,9 @@
             verified: false
         };
 
+        // Global SDK reference
+        let farcasterSdk = null;
+
         function initFarcaster() {
             console.log('Initializing Farcaster context...');
             
@@ -217,10 +220,10 @@
             setTimeout(() => {
                 console.log('Game initialized successfully');
                 document.getElementById('contract-address-display').textContent = CONTRACT_ADDRESS || 'Please update contract address';
-                checkExistingConnection();
                 
                 // Notify Farcaster SDK that app is ready 
                 if (typeof sdk !== 'undefined' && sdk.actions && sdk.actions.ready) {
+                    farcasterSdk = sdk;
                     sdk.actions.ready();
                     console.log('Farcaster SDK ready() called');
                 } else {
@@ -228,6 +231,7 @@
                     // Fallback - try accessing global sdk after delay 
                     setTimeout(() => {
                         if (window.sdk && window.sdk.actions && window.sdk.actions.ready) {
+                            farcasterSdk = window.sdk;
                             window.sdk.actions.ready();
                             console.log('Farcaster SDK ready() called (delayed)');
                         }
@@ -236,24 +240,37 @@
             }, 200);
         });
         
-        async function connectWallet() {
+        // FIXED: Use Farcaster SDK wallet instead of MetaMask
+        async function connectFarcasterWallet() {
             try {
-                if (typeof window.ethereum === 'undefined') {
-                    showStatus('❌ MetaMask not found! Please install MetaMask.', 'error');
+                if (!farcasterSdk) {
+                    showStatus('❌ Farcaster SDK not available. Please open in Farcaster app.', 'error');
                     return;
                 }
                 
-                if (!CONTRACT_ADDRESS || CONTRACT_ADDRESS === "YOUR_DEPLOYED_CONTRACT_ADDRESS") {
-                    showStatus('❌ Please update CONTRACT_ADDRESS in the code!', 'error');
+                showStatus('🔌 Connecting Farcaster wallet...', 'info');
+                
+                // Use Farcaster SDK wallet
+                const walletProvider = await farcasterSdk.wallet.ethProvider();
+                if (!walletProvider) {
+                    showStatus('❌ Farcaster wallet not available', 'error');
                     return;
                 }
                 
-                showStatus('🔌 Connecting wallet...', 'info');
+                // Setup provider with Farcaster wallet
+                provider = new ethers.providers.Web3Provider(walletProvider);
+                signer = provider.getSigner();
+                userAddress = await signer.getAddress();
                 
-                // Request wallet connection
-                await window.ethereum.request({ method: 'eth_requestAccounts' });
-                await setupProvider();
-                await checkNetwork();
+                // Check if we're on Base Mainnet
+                const network = await provider.getNetwork();
+                if (network.chainId !== BASE_MAINNET_CHAIN_ID) {
+                    showStatus('❌ Please switch to Base Mainnet in Farcaster wallet', 'error');
+                    return;
+                }
+                
+                // Setup contract
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
                 
                 // Update UI
                 document.getElementById('connect-btn').style.display = 'none';
@@ -271,36 +288,11 @@
                 await updateContractInfo();
                 await checkCooldown();
                 
-                showStatus('✅ Connected! Choose your lucky number.', 'success');
+                showStatus('✅ Farcaster wallet connected! Choose your lucky number.', 'success');
                 
             } catch (error) {
-                console.error('Connection error:', error);
-                showStatus('❌ Failed to connect: ' + error.message, 'error');
-            }
-        }
-        
-        async function setupProvider() {
-            provider = new ethers.providers.Web3Provider(window.ethereum);
-            signer = provider.getSigner();
-            contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-            userAddress = await signer.getAddress();
-            console.log('🔗 Connected to:', userAddress);
-        }
-        
-        async function checkNetwork() {
-            const network = await provider.getNetwork();
-            if (network.chainId !== BASE_MAINNET_CHAIN_ID) {
-                showStatus('🔄 Switching to Base Mainnet...', 'info');
-                try {
-                    await window.ethereum.request({
-                        method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: '0x2105' }]
-                    });
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                } catch (error) {
-                    showStatus('❌ Please switch to Base Mainnet network', 'error');
-                    throw error;
-                }
+                console.error('Farcaster wallet connection error:', error);
+                showStatus('❌ Failed to connect Farcaster wallet: ' + error.message, 'error');
             }
         }
         
@@ -329,7 +321,7 @@
                 document.getElementById('play-btn').disabled = true;
                 document.getElementById('play-btn').textContent = '🎲 Rolling...';
                 
-                // Send transaction
+                // Send transaction using Farcaster wallet
                 const tx = await contract.play(selectedChoice);
                 showStatus('⏳ Transaction sent, waiting for confirmation...', 'info');
                 
@@ -492,33 +484,6 @@
             }
         }
         
-        async function checkExistingConnection() {
-            if (typeof window.ethereum !== 'undefined') {
-                try {
-                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-                    if (accounts.length > 0) {
-                        await setupProvider();
-                        
-                        // Update UI without showing connection flow
-                        document.getElementById('connect-btn').style.display = 'none';
-                        document.getElementById('wallet-connected').style.display = 'block';
-                        document.getElementById('wallet-address').textContent = 
-                            userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
-                        
-                        document.getElementById('game-stats').style.display = 'grid';
-                        document.getElementById('contract-info').style.display = 'block';
-                        document.getElementById('game-section').style.display = 'block';
-                        
-                        await updateGameStats();
-                        await updateContractInfo();
-                        await checkCooldown();
-                    }
-                } catch (error) {
-                    console.log('No previous connection found');
-                }
-            }
-        }
-        
         function showStatus(message, type = 'info') {
             const statusDiv = document.getElementById('status-message');
             const statusText = document.getElementById('status-text');
@@ -545,9 +510,10 @@
         }, 30000);
     </script>
 
-    <!-- Farcaster SDK (Module Import) -  -->
+    <!-- Farcaster SDK (Module Import) -->
     <script type="module">
         import { sdk } from 'https://esm.sh/@farcaster/miniapp-sdk';
+        window.sdk = sdk;
         sdk.actions.ready({ disableNativeGestures: true });
     </script>
 
