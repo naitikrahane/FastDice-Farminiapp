@@ -1,6 +1,4 @@
 
------
-
 ````markdown
 # 🎲 Fast Dice Game (Base Mainnet)
 
@@ -8,7 +6,7 @@
 ![Network](https://img.shields.io/badge/network-Base_Mainnet-blue)
 ![Platform](https://img.shields.io/badge/platform-Farcaster%20%7C%20Web-purple)
 
-A lightweight, decentralized dice gambling game built specifically for the **Farcaster** ecosystem on the **Base L2** network. Users pick a number (1-6), roll the dice on-chain, and receive instant USDC payouts if they win.
+A lightweight, decentralized dice game built specifically for the **Farcaster** ecosystem on the **Base L2** network. Users pick a number (1-6), roll the dice on-chain, and receive instant USDC payouts if they win.
 
 ## ✨ Features
 
