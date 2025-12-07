@@ -192,7 +192,7 @@ const [player, chosen, rolled, won] = event.args;
 ## 🔗 Links
 
   * **Live Miniapp:** [Farcaster Miniapp](https://farcaster.xyz/miniapps/jngLyEwfMIWu/fastdice)
-  * **Developer:** [Naitik Rahane](https://farcaster.xyz/naitikrahane)
+  * **SOCIAL:** [Naitik Rahane](https://farcaster.xyz/naitikrahane)
 
 -----
 
@@ -215,5 +215,3 @@ my-dice-game-repo/
 └── LICENSE                    # MIT License file
 ```
 
-```
-```
