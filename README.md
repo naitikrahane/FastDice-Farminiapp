@@ -1,5 +1,3 @@
-
-````markdown
 # 🎲 Fast Dice Game (Base Mainnet)
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
