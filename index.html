@@ -1013,98 +1013,40 @@
             console.error('❌ Farcaster SDK failed:', error);
         }
     </script>
-        <button onclick="toggleChat()" 
-            class="group fixed bottom-6 right-4 md:right-8 z-50 flex items-center justify-center transition-all duration-500 hover:scale-110 hover:-translate-y-1">
+            <button onclick="openChat()" 
+            class="group fixed bottom-6 right-4 md:right-8 z-50 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95">
         
-        <div class="absolute -inset-0.5 rounded-full bg-gradient-to-tr from-cyan-400 via-purple-500 to-pink-500 opacity-70 blur-md group-hover:opacity-100 group-hover:duration-200 animate-spin-slow"></div>
+        <div class="absolute -inset-1 rounded-full bg-gradient-to-r from-purple-600 to-blue-500 opacity-60 blur-lg group-hover:opacity-100 animate-pulse"></div>
         
-        <div class="relative h-14 w-14 md:h-16 md:w-16 rounded-full bg-slate-950 border border-white/10 flex items-center justify-center overflow-hidden shadow-2xl">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 md:h-8 md:w-8 text-white relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="relative h-16 w-16 rounded-full bg-slate-900 border-2 border-white/20 flex items-center justify-center overflow-hidden shadow-2xl backdrop-blur-md">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white drop-shadow-md group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
+            
+            <div class="absolute top-3 right-3 h-3 w-3 bg-green-500 border-2 border-slate-900 rounded-full animate-bounce"></div>
         </div>
-
-        <span class="absolute top-1 right-1 flex h-4 w-4">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500 border-2 border-slate-900"></span>
-        </span>
     </button>
 
-    <div id="chat-overlay" class="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xl hidden flex flex-col transition-all duration-300 opacity-0 scale-95 origin-bottom-right">
-        
-        <div class="flex justify-between items-center p-4 bg-white/5 border-b border-white/10 shadow-lg shrink-0 backdrop-blur-md">
-            <div class="flex items-center gap-3">
-                <div class="relative">
-                    <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg border border-white/10">
-                        <span class="text-xl">💬</span>
-                    </div>
-                    <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-slate-900 rounded-full"></div>
-                </div>
-                <div class="flex flex-col">
-                    <h3 class="text-white font-bold text-lg leading-tight">FastDice Chat</h3>
-                    <span class="text-xs text-indigo-300 font-medium tracking-wide">LIVE COMMUNITY</span>
-                </div>
-            </div>
-            
-            <button onclick="toggleChat()" class="group bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/50 text-white/80 hover:text-red-400 pl-3 pr-4 py-2 rounded-full transition-all duration-300 flex items-center gap-2">
-                <div class="bg-white/10 rounded-full p-1 group-hover:bg-red-500/20 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </div>
-                <span class="text-sm font-bold">Close</span>
-            </button>
-        </div>
-
-        <div class="flex-1 w-full relative bg-slate-900">
-            <div class="absolute inset-0 flex items-center justify-center z-0">
-                <div class="flex flex-col items-center gap-4">
-                    <div class="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
-                    <p class="text-indigo-400 text-sm font-mono animate-pulse">Establishing Secure Link...</p>
-                </div>
-            </div>
-
-            <iframe 
-                src="https://onchat.sebayaki.com/onchat?theme=signet-purple&hide-mobile-tabs=true&hide-brand=true" 
-                class="w-full h-full border-0 relative z-10"
-                allow="clipboard-write; clipboard-read; web-share; payment; accelerometer; autoplay; camera; encrypted-media; gyroscope; microphone; geolocation; ethereum; display-capture"
-                sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-top-navigation-by-user-activation allow-storage-access-by-user-activation">
-            </iframe>
-        </div>
-    </div>
-
     <script>
-        function toggleChat() {
-            const overlay = document.getElementById('chat-overlay');
-            const body = document.body;
+        async function openChat() {
+            const chatUrl = "https://onchat.sebayaki.com/onchat?theme=signet-purple&hide-mobile-tabs=true&hide-brand=true";
             
-            if (overlay.classList.contains('hidden')) {
-                // OPEN
-                overlay.classList.remove('hidden');
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        overlay.classList.remove('opacity-0', 'scale-95');
-                        overlay.classList.add('opacity-100', 'scale-100');
-                    });
-                });
-                body.style.overflow = 'hidden'; 
-            } else {
-                // CLOSE
-                overlay.classList.remove('opacity-100', 'scale-100');
-                overlay.classList.add('opacity-0', 'scale-95');
-                
-                setTimeout(() => {
-                    overlay.classList.add('hidden');
-                    body.style.overflow = '';
-                }, 300);
+            // 1. Try Farcaster Native Open (Best for Wallet Connection)
+            if (window.sdk && window.sdk.actions && window.sdk.actions.openUrl) {
+                try {
+                    await window.sdk.actions.openUrl(chatUrl);
+                    return;
+                } catch (e) {
+                    console.log("SDK Open failed, falling back...");
+                }
             }
+            
+            // 2. Fallback for standard browsers
+            window.open(chatUrl, '_blank');
         }
     </script>
 
-    <style>
-        .animate-spin-slow { animation: spin 4s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    </style>
     
     
 </body>
