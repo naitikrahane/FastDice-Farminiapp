@@ -1013,62 +1013,60 @@
             console.error('❌ Farcaster SDK failed:', error);
         }
     </script>
-                   <button onclick="toggleChat()" 
-            class="group fixed bottom-6 right-4 md:right-8 z-50 flex items-center gap-2 pr-5 pl-2 py-2 rounded-full bg-slate-900/90 border border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.4)] backdrop-blur-xl transition-all hover:scale-105 active:scale-95">
-        
-        <div class="h-10 w-10 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg border border-white/20">
-            <span class="text-xl">💬</span>
-        </div>
-        
-        <div class="flex flex-col items-start">
-            <span class="text-white font-bold text-sm">Community</span>
-            <span class="text-[10px] text-green-400 flex items-center gap-1">● Online</span>
-        </div>
+          <button onclick="toggleChat()" 
+            class="fixed bottom-6 right-4 md:right-8 w-16 h-16 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-full shadow-[0_0_20px_rgba(168,85,247,0.6)] z-50 flex items-center justify-center hover:scale-105 transition-transform duration-200 group border-2 border-white/20">
+        <span class="text-3xl">💬</span>
+        <span class="absolute top-1 right-1 flex h-4 w-4">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-4 w-4 bg-green-500 border-2 border-purple-900"></span>
+        </span>
     </button>
 
-    <div id="chat-overlay" class="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-sm hidden flex flex-col transition-opacity duration-300 opacity-0">
-        
-        <div class="flex justify-between items-center p-3 bg-slate-900 border-b border-white/10 shrink-0">
-            <h3 class="text-white font-bold ml-2">Live Chat</h3>
-            
-            <div class="flex gap-2">
-                <button onclick="window.open('https://onchat.sebayaki.com/onchat?theme=signet-purple&hide-mobile-tabs=true&hide-brand=true', '_blank')" 
-                        class="px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 text-xs font-bold border border-indigo-500/30 hover:bg-indigo-500/40">
-                    Fix Wallet ↗
-                </button>
-                
-                <button onclick="toggleChat()" class="px-3 py-1.5 rounded-lg bg-white/10 text-white text-xs font-bold hover:bg-red-500/20">
-                    Close
-                </button>
+    <div id="chat-overlay" class="fixed inset-0 z-[100] bg-slate-900 hidden flex flex-col transition-opacity duration-300 opacity-0">
+        <div class="flex justify-between items-center p-4 bg-slate-800 border-b border-white/10 shrink-0">
+            <div class="flex items-center space-x-3">
+                <span class="text-2xl">💬</span>
+                <h3 class="text-white font-bold text-lg">Community Chat</h3>
             </div>
+            <button onclick="toggleChat()" class="bg-white/10 hover:bg-red-500/20 text-white hover:text-red-400 px-4 py-2 rounded-xl transition-all font-bold flex items-center">
+                Close ✕
+            </button>
         </div>
 
-        <div class="flex-1 w-full relative bg-slate-900">
+                <div class="flex-1 w-full relative bg-white">
             <iframe 
                 src="https://onchat.sebayaki.com/onchat?theme=signet-purple&hide-mobile-tabs=true&hide-brand=true" 
                 class="w-full h-full border-0"
-                allow="camera *; microphone *; clipboard-write *; clipboard-read *; web-share *; payment *; ethereum *; fullscreen *"
-                referrerpolicy="no-referrer-when-downgrade">
+                allow="clipboard-write; clipboard-read; web-share; payment; accelerometer; autoplay; camera; encrypted-media; gyroscope; microphone; geolocation; ethereum"
+                sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts allow-downloads allow-top-navigation-by-user-activation">
             </iframe>
         </div>
+
     </div>
 
     <script>
         function toggleChat() {
             const overlay = document.getElementById('chat-overlay');
+            const body = document.body;
+            
             if (overlay.classList.contains('hidden')) {
+                // Open
                 overlay.classList.remove('hidden');
-                requestAnimationFrame(() => overlay.classList.remove('opacity-0'));
-                document.body.style.overflow = 'hidden';
+                requestAnimationFrame(() => {
+                    overlay.classList.remove('opacity-0');
+                    overlay.classList.add('opacity-100');
+                });
+                body.style.overflow = 'hidden'; // Stop background scrolling
             } else {
+                // Close
+                overlay.classList.remove('opacity-100');
                 overlay.classList.add('opacity-0');
                 setTimeout(() => {
                     overlay.classList.add('hidden');
-                    document.body.style.overflow = '';
+                    body.style.overflow = ''; // Restore scrolling
                 }, 300);
             }
         }
     </script>
-
 </body>
 </html>
