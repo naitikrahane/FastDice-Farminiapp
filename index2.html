@@ -1013,73 +1013,47 @@
             console.error('❌ Farcaster SDK failed:', error);
         }
     </script>
-                  <button onclick="toggleChat()" 
-            class="fixed bottom-6 right-4 md:right-8 w-16 h-16 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-full shadow-[0_0_20px_rgba(168,85,247,0.6)] z-40 flex items-center justify-center hover:scale-105 transition-transform duration-200 group border-2 border-white/20">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
-        <span class="absolute top-1 right-1 flex h-4 w-4">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-4 w-4 bg-green-500 border-2 border-purple-900"></span>
-        </span>
-    </button>
+    <!-- CHAT OPEN BUTTON -->
+<button onclick="openChat()"
+  style="position:fixed;bottom:24px;right:24px;z-index:9999;
+         width:64px;height:64px;border-radius:50%;
+         background:linear-gradient(135deg,#7c3aed,#ec4899);
+         color:#fff;font-size:26px;border:none;cursor:pointer;">
+  💬
+</button>
 
-    <div id="chat-overlay" class="fixed inset-0 z-[100] bg-slate-900 hidden flex flex-col transition-opacity duration-300 opacity-0">
-        
-        <div class="flex justify-between items-center p-4 bg-slate-800 border-b border-white/10 shrink-0">
-            <div class="flex items-center space-x-3">
-                <span class="text-2xl">💬</span>
-                <h3 class="text-white font-bold text-lg">Community Chat</h3>
-            </div>
-            <button onclick="toggleChat()" class="bg-white/10 hover:bg-red-500/20 text-white hover:text-red-400 px-4 py-2 rounded-xl transition-all font-bold flex items-center">
-                <span>Close</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
+<!-- CHAT OVERLAY -->
+<div id="onchat-overlay"
+  style="display:none;position:fixed;inset:0;z-index:10000;
+         background:#0f172a;">
+  
+  <!-- CLOSE BUTTON -->
+  <button onclick="closeChat()"
+    style="position:absolute;top:16px;right:16px;
+           background:#ef4444;color:#fff;
+           border:none;padding:10px 14px;
+           border-radius:8px;cursor:pointer;">
+    Close ✕
+  </button>
 
-        <div class="flex-1 w-full relative">
-            <iframe 
-                id="chat-frame"
-                src="https://onchat.sebayaki.com/onchat?theme=signet-purple&hide-mobile-tabs=true&hide-brand=true" 
-                class="w-full h-full border-0"
-                allow="clipboard-write; clipboard-read; web-share; payment; accelerometer; autoplay; camera; encrypted-media; gyroscope; microphone; geolocation"
-                sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts allow-downloads"
-                loading="lazy">
-            </iframe>
-        </div>
-    </div>
+  <!-- ONCHAT IFRAME -->
+  <iframe
+    src="https://onchat.sebayaki.com/onchat?theme=signet-purple&hide-mobile-tabs=true&hide-brand=true"
+    style="width:100%;height:100%;border:0;"
+    loading="lazy">
+  </iframe>
+</div>
 
-    <script>
-        function toggleChat() {
-            const overlay = document.getElementById('chat-overlay');
-            const body = document.body;
-            
-            if (overlay.classList.contains('hidden')) {
-                // Open Chat
-                overlay.classList.remove('hidden');
-                // Small delay to allow display:block to apply before changing opacity for fade effect
-                requestAnimationFrame(() => {
-                    overlay.classList.remove('opacity-0');
-                    overlay.classList.add('opacity-100');
-                });
-                // Prevent background scrolling
-                body.style.overflow = 'hidden';
-            } else {
-                // Close Chat
-                overlay.classList.remove('opacity-100');
-                overlay.classList.add('opacity-0');
-                
-                // Wait for fade out
-                setTimeout(() => {
-                    overlay.classList.add('hidden');
-                    // Restore scrolling
-                    body.style.overflow = '';
-                }, 300);
-            }
-        }
-    </script>
+<script>
+  function openChat() {
+    document.getElementById('onchat-overlay').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
 
+  function closeChat() {
+    document.getElementById('onchat-overlay').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+</script>
 </body>
 </html>
