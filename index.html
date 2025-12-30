@@ -1013,40 +1013,47 @@
             console.error('❌ Farcaster SDK failed:', error);
         }
     </script>
-                <button onclick="toggleChat()" 
-            class="group fixed bottom-6 right-4 md:right-8 z-50 flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 shadow-[0_0_20px_rgba(124,58,237,0.5)] transition-all duration-300 hover:scale-110 active:scale-95 border-2 border-white/20">
+               <button onclick="toggleChat()" 
+            class="group fixed bottom-6 right-4 md:right-8 z-50 flex items-center gap-3 pr-6 pl-2 py-2 rounded-full bg-slate-900/95 border border-purple-500/50 shadow-[0_0_25px_rgba(147,51,234,0.5)] backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-slate-800 hover:border-purple-400 active:scale-95">
         
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-        </svg>
+        <div class="relative h-12 w-12 rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center shadow-lg overflow-hidden shrink-0 border border-white/10">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+        </div>
 
-        <span class="absolute top-1 right-1 flex h-4 w-4">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-green-500 border-2 border-indigo-900"></span>
-        </span>
+        <div class="flex flex-col items-start">
+            <span class="text-white font-bold text-sm leading-tight tracking-wide">Community</span>
+            <span class="text-[10px] text-green-400 flex items-center gap-1 font-mono">
+                <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span> ONLINE
+            </span>
+        </div>
     </button>
 
-    <div id="chat-overlay" class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-sm hidden flex flex-col transition-opacity duration-300 opacity-0">
+    <div id="chat-overlay" class="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm hidden flex flex-col transition-all duration-300 opacity-0">
         
-        <div class="flex justify-between items-center p-4 bg-slate-900 border-b border-white/10 shrink-0">
+        <div class="flex justify-between items-center p-4 bg-slate-900 border-b border-white/10 shrink-0 shadow-2xl">
             <div class="flex items-center gap-3">
-                <span class="text-2xl">💬</span>
-                <div>
-                    <h3 class="text-white font-bold text-lg">Community Chat</h3>
-                    <p class="text-xs text-green-400">● Online</p>
+                <div class="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+                    <span class="text-lg">💬</span>
                 </div>
+                <h3 class="text-white font-bold text-lg">Live Chat</h3>
             </div>
-            <button onclick="toggleChat()" class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full text-sm font-bold transition-all">
-                Close ✕
+            <button onclick="toggleChat()" class="bg-white/5 hover:bg-red-500/20 text-white/70 hover:text-red-400 px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 border border-white/5">
+                <span>Close</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
             </button>
         </div>
 
-        <div class="flex-1 w-full relative bg-slate-800">
+        <div class="flex-1 w-full relative bg-slate-900">
             <iframe 
                 src="https://onchat.sebayaki.com/onchat?theme=signet-purple&hide-mobile-tabs=true&hide-brand=true" 
                 class="w-full h-full border-0"
-                allow="clipboard-write; clipboard-read; web-share; payment; accelerometer; autoplay; camera; encrypted-media; gyroscope; microphone; geolocation; ethereum"
-                sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-top-navigation-by-user-activation">
+                referrerpolicy="origin"
+                allow="clipboard-write; clipboard-read; web-share; payment; accelerometer; autoplay; camera; encrypted-media; gyroscope; microphone; geolocation; ethereum; fullscreen"
+                sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-same-origin allow-scripts allow-downloads allow-top-navigation allow-top-navigation-by-user-activation">
             </iframe>
         </div>
     </div>
@@ -1057,6 +1064,7 @@
             const body = document.body;
             
             if (overlay.classList.contains('hidden')) {
+                // Open
                 overlay.classList.remove('hidden');
                 requestAnimationFrame(() => {
                     overlay.classList.remove('opacity-0');
@@ -1064,6 +1072,7 @@
                 });
                 body.style.overflow = 'hidden'; 
             } else {
+                // Close
                 overlay.classList.remove('opacity-100');
                 overlay.classList.add('opacity-0');
                 setTimeout(() => {
@@ -1073,6 +1082,7 @@
             }
         }
     </script>
+
 
     
     
