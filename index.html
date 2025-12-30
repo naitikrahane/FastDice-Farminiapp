@@ -1084,8 +1084,7 @@ function isFarcaster() {
  */
 function openChatSmart() {
   if (isFarcaster()) {
-    // ✅ REQUIRED: iframe wallets DO NOT work in Farcaster
-    window.open(CHAT_URL, "_blank", "noopener,noreferrer");
+    toggleChat();
     return;
   }
   toggleChat();
