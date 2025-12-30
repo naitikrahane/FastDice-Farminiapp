@@ -1015,12 +1015,12 @@
         }
     </script>
             <!-- CHAT OPEN BUTTON -->
-<button onclick="toggleChat()" 
+<button onclick="openChatSmart()" 
   class="fixed bottom-6 right-4 md:right-8 w-16 h-16 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-full shadow-[0_0_20px_rgba(168,85,247,0.6)] z-50 flex items-center justify-center hover:scale-105 transition-transform duration-200 group border-2 border-white/20">
   <span class="text-3xl">💬</span>
 </button>
 
-<!-- CHAT OVERLAY -->
+<!-- CHAT OVERLAY (USED ONLY OUTSIDE FARCASTER) -->
 <div id="chat-overlay"
   class="fixed inset-0 z-[100] bg-slate-900 hidden flex flex-col transition-opacity duration-300 opacity-0">
 
@@ -1048,7 +1048,7 @@
       </div>
     </div>
 
-    <!-- CHAT IFRAME (NO SANDBOX ❌) -->
+    <!-- CHAT IFRAME -->
     <iframe
       id="chat-iframe"
       src="https://onchat.sebayaki.com/onchat?theme=signet-purple&hide-mobile-tabs=true&hide-brand=true"
@@ -1059,7 +1059,41 @@
 
   </div>
 </div>
-    <script>
+
+<!-- SCRIPT -->
+<script>
+const CHAT_URL =
+  "https://onchat.sebayaki.com/onchat?theme=signet-purple&hide-mobile-tabs=true&hide-brand=true";
+
+/**
+ * Detect Farcaster / Warpcast environment
+ * This is the ONLY reliable approach
+ */
+function isFarcaster() {
+  return (
+    navigator.userAgent.toLowerCase().includes("farcaster") ||
+    navigator.userAgent.toLowerCase().includes("warpcast") ||
+    window !== window.parent
+  );
+}
+
+/**
+ * Smart open:
+ * - Farcaster → NEW TAB (required for wallet)
+ * - Others → iframe overlay
+ */
+function openChatSmart() {
+  if (isFarcaster()) {
+    // ✅ REQUIRED: iframe wallets DO NOT work in Farcaster
+    window.open(CHAT_URL, "_blank", "noopener,noreferrer");
+    return;
+  }
+  toggleChat();
+}
+
+/**
+ * Overlay toggle (non-Farcaster only)
+ */
 function toggleChat() {
   const overlay = document.getElementById('chat-overlay');
   const iframe = document.getElementById('chat-iframe');
@@ -1070,8 +1104,8 @@ function toggleChat() {
     overlay.classList.remove('hidden');
     loader.style.display = 'flex';
 
-    // HARD reload iframe → fixes wallet stuck state
-    iframe.src = iframe.src;
+    // Force clean reload (fixes stuck wallet state)
+    iframe.src = CHAT_URL;
 
     requestAnimationFrame(() => {
       overlay.classList.remove('opacity-0');
@@ -1093,6 +1127,6 @@ function toggleChat() {
 function onChatLoaded() {
   document.getElementById('chat-loader').style.display = 'none';
 }
-    </script>
+</script>
 </body>
 </html>
