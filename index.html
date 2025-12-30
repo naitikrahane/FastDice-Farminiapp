@@ -1014,118 +1014,59 @@
             console.error('❌ Farcaster SDK failed:', error);
         }
     </script>
-            <!-- CHAT OPEN BUTTON -->
-<button onclick="openChatSmart()" 
-  class="fixed bottom-6 right-4 md:right-8 w-16 h-16 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-full shadow-[0_0_20px_rgba(168,85,247,0.6)] z-50 flex items-center justify-center hover:scale-105 transition-transform duration-200 group border-2 border-white/20">
-  <span class="text-3xl">💬</span>
+    <!-- OPEN CHAT BUTTON -->
+<button onclick="openOnChat()"
+  style="
+    position:fixed;
+    bottom:24px;
+    right:24px;
+    width:64px;
+    height:64px;
+    border-radius:50%;
+    border:none;
+    cursor:pointer;
+    background:linear-gradient(135deg,#7c3aed,#ec4899);
+    box-shadow:0 0 20px rgba(168,85,247,0.6);
+    color:white;
+    font-size:26px;
+    z-index:9999;
+  ">
+  💬
 </button>
 
-<!-- CHAT OVERLAY (USED ONLY OUTSIDE FARCASTER) -->
-<div id="chat-overlay"
-  class="fixed inset-0 z-[100] bg-slate-900 hidden flex flex-col transition-opacity duration-300 opacity-0">
-
-  <!-- HEADER -->
-  <div class="flex justify-between items-center p-4 bg-slate-800 border-b border-white/10 shrink-0">
-    <div class="flex items-center space-x-3">
-      <span class="text-2xl">💬</span>
-      <h3 class="text-white font-bold text-lg">Community Chat</h3>
-    </div>
-    <button onclick="toggleChat()"
-      class="bg-white/10 hover:bg-red-500/20 text-white hover:text-red-400 px-4 py-2 rounded-xl font-bold">
-      Close ✕
-    </button>
-  </div>
-
-  <!-- IFRAME AREA -->
-  <div class="flex-1 w-full relative bg-black">
-
-    <!-- LOADER -->
-    <div id="chat-loader"
-      class="absolute inset-0 flex items-center justify-center bg-slate-900 z-10">
-      <div class="text-center text-white">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
-        <p class="text-sm opacity-80">Loading chat…</p>
-      </div>
-    </div>
-
-    <!-- CHAT IFRAME -->
-    <iframe
-      id="chat-iframe"
-      src="https://onchat.sebayaki.com/onchat?theme=signet-purple&hide-mobile-tabs=true&hide-brand=true"
-      class="w-full h-full border-0"
-      onload="onChatLoaded()"
-      allow="clipboard-write; clipboard-read; web-share; payment; accelerometer; autoplay; camera; encrypted-media; gyroscope; microphone; geolocation; ethereum">
-    </iframe>
-
-  </div>
+<!-- ONCHAT WIDGET CONTAINER -->
+<div id="onchat-widget"
+     style="
+       position:fixed;
+       inset:0;
+       z-index:10000;
+       display:none;
+       background:#0f172a;
+     ">
 </div>
 
-<!-- SCRIPT -->
+<!-- ONCHAT SCRIPT -->
+<script src="https://onchat.sebayaki.com/widget.js"></script>
+
 <script>
-const CHAT_URL =
-  "https://onchat.sebayaki.com/onchat?theme=signet-purple&hide-mobile-tabs=true&hide-brand=true";
+  let onChatMounted = false;
 
-/**
- * Detect Farcaster / Warpcast environment
- * This is the ONLY reliable approach
- */
-function isFarcaster() {
-  return (
-    navigator.userAgent.toLowerCase().includes("farcaster") ||
-    navigator.userAgent.toLowerCase().includes("warpcast") ||
-    window !== window.parent
-  );
-}
+  function openOnChat() {
+    const el = document.getElementById('onchat-widget');
+    el.style.display = 'block';
 
-/**
- * Smart open:
- * - Farcaster → NEW TAB (required for wallet)
- * - Others → iframe overlay
- */
-function openChatSmart() {
-  if (isFarcaster()) {
-    toggleChat();
-    return;
+    if (!onChatMounted) {
+      OnChat.mount('#onchat-widget', {
+        theme: 'signet-purple',
+        hideMobileTabs: true,
+        hideBrand: true,
+        onClose: () => {
+          el.style.display = 'none';
+        }
+      });
+      onChatMounted = true;
+    }
   }
-  toggleChat();
-}
-
-/**
- * Overlay toggle (non-Farcaster only)
- */
-function toggleChat() {
-  const overlay = document.getElementById('chat-overlay');
-  const iframe = document.getElementById('chat-iframe');
-  const loader = document.getElementById('chat-loader');
-  const body = document.body;
-
-  if (overlay.classList.contains('hidden')) {
-    overlay.classList.remove('hidden');
-    loader.style.display = 'flex';
-
-    // Force clean reload (fixes stuck wallet state)
-    iframe.src = CHAT_URL;
-
-    requestAnimationFrame(() => {
-      overlay.classList.remove('opacity-0');
-      overlay.classList.add('opacity-100');
-    });
-
-    body.style.overflow = 'hidden';
-  } else {
-    overlay.classList.remove('opacity-100');
-    overlay.classList.add('opacity-0');
-
-    setTimeout(() => {
-      overlay.classList.add('hidden');
-      body.style.overflow = '';
-    }, 300);
-  }
-}
-
-function onChatLoaded() {
-  document.getElementById('chat-loader').style.display = 'none';
-}
 </script>
 </body>
 </html>
