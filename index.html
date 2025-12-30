@@ -1064,5 +1064,43 @@
 
   </div>
 </div>
+    <script>
+function toggleChat() {
+  const overlay = document.getElementById('chat-overlay');
+  const iframe = document.getElementById('chat-iframe');
+  const loader = document.getElementById('chat-loader');
+  const body = document.body;
+
+  if (overlay.classList.contains('hidden')) {
+    // OPEN
+    overlay.classList.remove('hidden');
+    loader.style.display = 'flex';
+
+    // Force clean reload (fixes stuck wallet / Farcaster issues)
+    iframe.src = iframe.src;
+
+    requestAnimationFrame(() => {
+      overlay.classList.remove('opacity-0');
+      overlay.classList.add('opacity-100');
+    });
+
+    body.style.overflow = 'hidden';
+  } else {
+    // CLOSE
+    overlay.classList.remove('opacity-100');
+    overlay.classList.add('opacity-0');
+
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      body.style.overflow = '';
+    }, 300);
+  }
+}
+
+function onChatLoaded() {
+  const loader = document.getElementById('chat-loader');
+  loader.style.display = 'none';
+}
+    </script>
 </body>
 </html>
