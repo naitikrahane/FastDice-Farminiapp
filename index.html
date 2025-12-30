@@ -1014,7 +1014,7 @@
             console.error('❌ Farcaster SDK failed:', error);
         }
     </script>
-    <!-- OPEN CHAT BUTTON -->
+  <!-- OPEN CHAT BUTTON -->
 <button onclick="openOnChat()"
   style="
     position:fixed;
@@ -1026,7 +1026,7 @@
     border:none;
     cursor:pointer;
     background:linear-gradient(135deg,#7c3aed,#ec4899);
-    box-shadow:0 0 20px rgba(168,85,247,0.6);
+    box-shadow:0 0 24px rgba(168,85,247,0.7);
     color:white;
     font-size:26px;
     z-index:9999;
@@ -1034,38 +1034,76 @@
   💬
 </button>
 
-<!-- ONCHAT WIDGET CONTAINER -->
-<div id="onchat-widget"
-     style="
-       position:fixed;
-       inset:0;
-       z-index:10000;
-       display:none;
-       background:#0f172a;
-     ">
-</div>
+<!-- FULLSCREEN OVERLAY -->
+<div id="onchat-overlay"
+  style="
+    position:fixed;
+    inset:0;
+    background:#0b0f1a;
+    z-index:10000;
+    display:none;
+  ">
 
-<!-- ONCHAT SCRIPT -->
-<script src="https://onchat.sebayaki.com/widget.js"></script>
+  <!-- TOP BAR -->
+  <div style="
+    height:56px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 16px;
+    background:linear-gradient(90deg,#111827,#1f2937);
+    color:white;
+    font-weight:600;
+  ">
+    <div style="display:flex;align-items:center;gap:10px;">
+      💬 <span>Community Chat</span>
+    </div>
+    <button onclick="closeOnChat()"
+      style="
+        background:rgba(255,255,255,0.1);
+        border:none;
+        color:white;
+        padding:6px 12px;
+        border-radius:8px;
+        cursor:pointer;
+      ">
+      Close ✕
+    </button>
+  </div>
+
+  <!-- CHAT BODY -->
+  <div id="onchat-widget"
+    style="
+      width:100%;
+      height:calc(100% - 56px);
+      background:#000;
+    ">
+  </div>
+</div>
+    <script src="https://onchat.sebayaki.com/widget.js"></script>
 
 <script>
   let onChatMounted = false;
 
   function openOnChat() {
-    const el = document.getElementById('onchat-widget');
-    el.style.display = 'block';
+    const overlay = document.getElementById("onchat-overlay");
+    overlay.style.display = "block";
+    document.body.style.overflow = "hidden";
 
     if (!onChatMounted) {
-      OnChat.mount('#onchat-widget', {
-        theme: 'signet-purple',
+      OnChat.mount("#onchat-widget", {
+        theme: "signet-purple",
         hideMobileTabs: true,
         hideBrand: true,
-        onClose: () => {
-          el.style.display = 'none';
-        }
+        onClose: closeOnChat
       });
       onChatMounted = true;
     }
+  }
+
+  function closeOnChat() {
+    document.getElementById("onchat-overlay").style.display = "none";
+    document.body.style.overflow = "";
   }
 </script>
 </body>
