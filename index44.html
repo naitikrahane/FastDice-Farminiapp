@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎯 GuessChain – Farcaster Miniapp</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #1e1e2e;
+    --accent: #00ff88;
+    --accent2: #ff3366;
+    --accent3: #7c3aed;
+    --gold: #ffd700;
+    --text: #e8e8f0;
+    --muted: #6b6b8a;
+    --card: #13131f;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* GRID BG */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* GLOW ORBS */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb1 { width: 400px; height: 400px; background: rgba(0,255,136,0.06); top: -100px; right: -100px; }
+  .orb2 { width: 300px; height: 300px; background: rgba(124,58,237,0.08); bottom: 100px; left: -80px; }
+
+  .app { position: relative; z-index: 1; max-width: 420px; margin: 0 auto; padding: 0 0 80px; }
+
+  /* HEADER */
+  header {
+    padding: 20px 16px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, var(--accent), #00ccff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .wallet-btn {
+    background: var(--border);
+    border: 1px solid rgba(0,255,136,0.2);
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .wallet-btn:hover { background: rgba(0,255,136,0.1); }
+  .wallet-btn.connected { color: var(--text); border-color: rgba(0,255,136,0.4); }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    margin: 20px 16px 0;
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 9px;
+    transition: all 0.2s;
+    color: var(--muted);
+  }
+  .tab.active {
+    background: var(--card);
+    color: var(--accent);
+    border: 1px solid rgba(0,255,136,0.2);
+  }
+
+  /* PANELS */
+  .panel { display: none; padding: 0 16px; }
+  .panel.active { display: block; }
+
+  /* LIVE ROUND CARD */
+  .round-card {
+    margin-top: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .round-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), #00ccff, var(--accent3));
+  }
+
+  .round-header {
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .badge-rookie { background: rgba(0,255,136,0.1); color: var(--accent); border: 1px solid rgba(0,255,136,0.3); }
+  .badge-pro { background: rgba(0,180,255,0.1); color: #00b4ff; border: 1px solid rgba(0,180,255,0.3); }
+  .badge-elite { background: rgba(255,170,0,0.1); color: var(--gold); border: 1px solid rgba(255,170,0,0.3); }
+  .badge-legend { background: rgba(255,51,102,0.1); color: var(--accent2); border: 1px solid rgba(255,51,102,0.3); }
+
+  .live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+  }
+  .pulse {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  .number-display {
+    padding: 20px 16px;
+    text-align: center;
+  }
+
+  .hidden-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    letter-spacing: 10px;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,255,136,0.4);
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .digit-box {
+    width: 44px; height: 60px;
+    background: var(--surface);
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    animation: flicker 3s infinite;
+  }
+  @keyframes flicker {
+    0%, 90%, 100% { border-color: rgba(0,255,136,0.2); }
+    95% { border-color: rgba(0,255,136,0.6); box-shadow: 0 0 10px rgba(0,255,136,0.2); }
+  }
+
+  .hint-text {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    margin-top: 8px;
+  }
+  .hint-text span { color: var(--gold); }
+
+  /* POOL INFO */
+  .pool-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-top: 1px solid var(--border);
+  }
+
+  .stat-item {
+    padding: 14px 12px;
+    text-align: center;
+    border-right: 1px solid var(--border);
+  }
+  .stat-item:last-child { border-right: none; }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .stat-value { font-family: 'Space Mono', monospace; font-size: 16px; font-weight: 700; margin-top: 2px; }
+  .stat-value.green { color: var(--accent); }
+  .stat-value.gold { color: var(--gold); }
+  .stat-value.blue { color: #00b4ff; }
+
+  /* TIMER */
+  .timer-bar {
+    margin: 0 16px 16px;
+    background: var(--border);
+    border-radius: 4px;
+    height: 4px;
+    overflow: hidden;
+  }
+  .timer-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #00ccff);
+    border-radius: 4px;
+    transition: width 1s linear;
+    animation: shimmer 2s infinite;
+  }
+  @keyframes shimmer {
+    0% { filter: brightness(1); }
+    50% { filter: brightness(1.3); }
+    100% { filter: brightness(1); }
+  }
+
+  .timer-label {
+    margin: 0 16px 12px;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .timer-label span { color: var(--accent); font-weight: 700; }
+
+  /* GUESS INPUT */
+  .guess-section {
+    margin-top: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+  }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .digit-inputs {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+
+  .digit-input {
+    width: 48px; height: 56px;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+    outline: none;
+    transition: all 0.2s;
+    caret-color: var(--accent);
+  }
+  .digit-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,255,136,0.1);
+    color: var(--accent);
+  }
+  .digit-input::placeholder { color: var(--border); }
+
+  /* BET AMOUNT */
+  .bet-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .bet-preset {
+    flex: 1;
+    padding: 8px 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .bet-preset:hover, .bet-preset.active {
+    background: rgba(0,255,136,0.08);
+    border-color: rgba(0,255,136,0.3);
+    color: var(--accent);
+  }
+
+  .bet-custom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+  }
+  .bet-custom input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    outline: none;
+  }
+  .eth-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* SUBMIT BTN */
+  .submit-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--accent), #00ccff);
+    border: none;
+    border-radius: 12px;
+    color: #000;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .submit-btn::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255,255,255,0.2), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s;
+  }
+  .submit-btn:hover::before { transform: translateX(100%); }
+  .submit-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,255,136,0.3); }
+  .submit-btn:active { transform: translateY(0); }
+  .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* CATEGORY SELECTOR */
+  .categories-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .cat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .cat-card:hover { transform: translateY(-2px); }
+  .cat-card.selected { border-color: currentColor; }
+
+  .cat-card.rookie { --cc: var(--accent); }
+  .cat-card.pro { --cc: #00b4ff; }
+  .cat-card.elite { --cc: var(--gold); }
+  .cat-card.legend { --cc: var(--accent2); }
+
+  .cat-card.selected { box-shadow: 0 0 20px rgba(from var(--cc) r g b / 0.15); }
+
+  .cat-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--cc);
+  }
+  .cat-digits { font-size: 12px; color: var(--muted); font-family: 'Space Mono', monospace; margin-top: 2px; }
+  .cat-pool { font-size: 14px; font-weight: 700; color: var(--text); margin-top: 10px; }
+  .cat-min { font-size: 10px; color: var(--muted); }
+  .cat-players { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; }
+
+  .cat-timer {
+    margin-top: 8px;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .cat-timer-fill {
+    height: 100%;
+    background: var(--cc);
+    border-radius: 2px;
+    opacity: 0.6;
+  }
+
+  /* LEADERBOARD */
+  .lb-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-top: 10px;
+    transition: all 0.2s;
+  }
+  .lb-entry:hover { border-color: rgba(0,255,136,0.2); }
+  .lb-entry.top1 { border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.04); }
+  .lb-entry.top2 { border-color: rgba(192,192,192,0.3); }
+  .lb-entry.top3 { border-color: rgba(205,127,50,0.3); }
+
+  .lb-rank {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    width: 32px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .rank1 { color: var(--gold); }
+  .rank2 { color: #c0c0c0; }
+  .rank3 { color: #cd7f32; }
+  .rank-other { color: var(--muted); font-size: 18px; }
+
+  .lb-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent3), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .lb-info { flex: 1; min-width: 0; }
+  .lb-name { font-weight: 700; font-size: 14px; truncate: ellipsis; }
+  .lb-meta { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .lb-won { text-align: right; }
+  .lb-amount { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; color: var(--accent); }
+  .lb-rounds { font-size: 10px; color: var(--muted); }
+
+  /* HISTORY */
+  .history-card {
+    margin-top: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .history-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .history-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .h-round { font-size: 12px; color: var(--muted); font-family: 'Space Mono', monospace; }
+  .h-target { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px; color: var(--accent); }
+  .h-result { font-size: 12px; }
+  .h-win { color: var(--accent); }
+  .h-loss { color: var(--accent2); }
+  .h-diff { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); }
+
+  /* POOL CREATE */
+  .create-form {
+    margin-top: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+  }
+
+  .form-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .form-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    padding: 12px 14px;
+    outline: none;
+    margin-bottom: 14px;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus { border-color: var(--accent); }
+
+  .select-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    padding: 12px 14px;
+    outline: none;
+    margin-bottom: 14px;
+    cursor: pointer;
+    appearance: none;
+  }
+
+  .transparency-box {
+    background: rgba(0,255,136,0.04);
+    border: 1px solid rgba(0,255,136,0.15);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .transparency-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .transparency-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    font-family: 'Space Mono', monospace;
+  }
+  .check { color: var(--accent); }
+
+  /* NOTIFICATION TOAST */
+  .toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--card);
+    border: 1px solid rgba(0,255,136,0.3);
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 100;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: rgba(10,10,15,0.95);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    display: flex;
+    padding: 8px 0 12px;
+    z-index: 10;
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    background: none;
+    color: var(--muted);
+  }
+  .nav-item.active { color: var(--accent); }
+  .nav-icon { font-size: 20px; line-height: 1; }
+  .nav-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+
+  /* CONFETTI */
+  .confetti-piece {
+    position: fixed;
+    width: 8px; height: 8px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 200;
+  }
+
+  /* WIN MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(10px);
+    z-index: 150;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--card);
+    border: 1px solid rgba(0,255,136,0.3);
+    border-radius: 20px;
+    padding: 28px;
+    width: calc(100% - 32px);
+    max-width: 380px;
+    text-align: center;
+    transform: scale(0.9);
+    transition: transform 0.3s;
+  }
+  .modal-overlay.show .modal { transform: scale(1); }
+
+  .win-emoji { font-size: 52px; margin-bottom: 12px; animation: bounce 0.5s infinite alternate; }
+  @keyframes bounce { from { transform: scale(1); } to { transform: scale(1.1); } }
+
+  .win-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, var(--accent), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+
+  .win-amount {
+    font-family: 'Space Mono', monospace;
+    font-size: 28px;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .win-meta { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+
+  .modal-btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+  }
+  .modal-btn.primary { background: linear-gradient(135deg, var(--accent), #00ccff); color: #000; }
+  .modal-btn.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* SECTION HEADER */
+  .section-hdr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 20px 0 4px;
+  }
+  .section-hdr h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--text);
+  }
+  .see-all {
+    font-size: 11px;
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  /* STREAK BADGE */
+  .streak {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,215,0,0.1);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
+    color: var(--gold);
+    font-family: 'Space Mono', monospace;
+    margin-left: 8px;
+  }
+
+  .distribute-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .dist-item {
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+  .dist-pct { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--accent); }
+  .dist-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="app">
+
+  <header>
+    <div class="logo">GUESSCHAIN</div>
+    <button class="wallet-btn" id="walletBtn" onclick="connectWallet()">Connect Wallet</button>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('play')">🎯 Play</div>
+    <div class="tab" onclick="switchTab('rounds')">🔥 Rounds</div>
+    <div class="tab" onclick="switchTab('leaderboard')">🏆 Board</div>
+    <div class="tab" onclick="switchTab('create')">➕ Create</div>
+  </div>
+
+  <!-- PLAY PANEL -->
+  <div class="panel active" id="panel-play">
+    <div class="round-card">
+      <div class="round-header">
+        <div>
+          <div class="category-badge badge-rookie">🟢 Rookie Round</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace;">Round #247 · 3 digits</div>
+        </div>
+        <div class="live-indicator">
+          <div class="pulse"></div>
+          LIVE
+        </div>
+      </div>
+
+      <div class="number-display">
+        <div class="hidden-number" id="hiddenNumber">
+          <div class="digit-box">?</div>
+          <div class="digit-box">?</div>
+          <div class="digit-box">?</div>
+        </div>
+        <div class="hint-text">💡 Hint drops in <span id="hintCountdown">12:34</span></div>
+      </div>
+
+      <div class="pool-stats">
+        <div class="stat-item">
+          <div class="stat-label">Pool</div>
+          <div class="stat-value green" id="poolAmount">1.24 ETH</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Players</div>
+          <div class="stat-value blue" id="playerCount">38</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Your Guess</div>
+          <div class="stat-value gold" id="yourGuessDisplay">—</div>
+        </div>
+      </div>
+
+      <div class="timer-label">
+        <span>Round ends in</span>
+        <span id="timerDisplay">47:23</span>
+      </div>
+      <div class="timer-bar">
+        <div class="timer-fill" id="timerFill" style="width:65%"></div>
+      </div>
+    </div>
+
+    <div class="guess-section">
+      <div class="section-title">🎯 Enter Your Guess</div>
+      <div class="digit-inputs" id="digitInputs">
+        <input class="digit-input" type="number" min="0" max="9" maxlength="1" placeholder="0" id="d0" oninput="handleDigitInput(0)">
+        <input class="digit-input" type="number" min="0" max="9" maxlength="1" placeholder="0" id="d1" oninput="handleDigitInput(1)">
+        <input class="digit-input" type="number" min="0" max="9" maxlength="1" placeholder="0" id="d2" oninput="handleDigitInput(2)">
+      </div>
+
+      <div class="section-title">💰 Bet Amount</div>
+      <div class="bet-row">
+        <div class="bet-preset" onclick="setBet(0.001)">0.001</div>
+        <div class="bet-preset" onclick="setBet(0.005)">0.005</div>
+        <div class="bet-preset" onclick="setBet(0.01)">0.01</div>
+        <div class="bet-preset" onclick="setBet(0.05)">0.05</div>
+      </div>
+      <div class="bet-custom">
+        <span class="eth-label">ETH</span>
+        <input type="number" step="0.001" min="0.001" placeholder="Custom amount" id="betAmount" value="0.001">
+      </div>
+
+      <button class="submit-btn" id="submitBtn" onclick="submitGuess()">
+        LOCK IN GUESS
+      </button>
+    </div>
+
+    <!-- DISTRIBUTION INFO -->
+    <div style="margin-top:16px;">
+      <div class="section-hdr">
+        <h2>Prize Split</h2>
+      </div>
+      <div class="distribute-box">
+        <div class="dist-item">
+          <div class="dist-pct">60%</div>
+          <div class="dist-label">🥇 Winner</div>
+        </div>
+        <div class="dist-item">
+          <div class="dist-pct">20%</div>
+          <div class="dist-label">🥈🥉 Top 3</div>
+        </div>
+        <div class="dist-item">
+          <div class="dist-pct">10%</div>
+          <div class="dist-label">🔄 Next Round</div>
+        </div>
+        <div class="dist-item">
+          <div class="dist-pct">10%</div>
+          <div class="dist-label">⚡ Protocol</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAST ROUNDS -->
+    <div class="section-hdr">
+      <h2>Your History</h2>
+      <a class="see-all">See All →</a>
+    </div>
+    <div class="history-card">
+      <div class="history-row">
+        <div>
+          <div class="h-round">Round #246 · Rookie</div>
+          <div class="h-diff">Your guess: 483 · Target: 479</div>
+        </div>
+        <div style="text-align:right">
+          <div class="h-target">479</div>
+          <div class="h-result h-win">+0.74 ETH 🏆</div>
+        </div>
+      </div>
+      <div class="history-row">
+        <div>
+          <div class="h-round">Round #245 · Pro</div>
+          <div class="h-diff">Your guess: 34291 · Target: 31847</div>
+        </div>
+        <div style="text-align:right">
+          <div class="h-target" style="color:#00b4ff">31847</div>
+          <div class="h-result h-loss">Off by 2444</div>
+        </div>
+      </div>
+      <div class="history-row">
+        <div>
+          <div class="h-round">Round #244 · Rookie</div>
+          <div class="h-diff">Your guess: 112 · Target: 115</div>
+        </div>
+        <div style="text-align:right">
+          <div class="h-target">115</div>
+          <div class="h-result h-loss">2nd · +0.12 ETH</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROUNDS PANEL -->
+  <div class="panel" id="panel-rounds">
+    <div class="section-hdr" style="margin-top:16px">
+      <h2>Active Rounds</h2>
+      <div class="live-indicator"><div class="pulse"></div>4 LIVE</div>
+    </div>
+    <div class="categories-grid">
+      <div class="cat-card rookie selected" onclick="selectRound('rookie')">
+        <div class="cat-name">Rookie</div>
+        <div class="cat-digits">3 digits · 1hr</div>
+        <div class="cat-pool">1.24 ETH</div>
+        <div class="cat-players">38 players · Min 0.001</div>
+        <div class="cat-timer"><div class="cat-timer-fill" style="width:65%"></div></div>
+      </div>
+      <div class="cat-card pro" onclick="selectRound('pro')">
+        <div class="cat-name">Pro</div>
+        <div class="cat-digits">5 digits · 6hr</div>
+        <div class="cat-pool">4.87 ETH</div>
+        <div class="cat-players">19 players · Min 0.005</div>
+        <div class="cat-timer"><div class="cat-timer-fill" style="width:40%"></div></div>
+      </div>
+      <div class="cat-card elite" onclick="selectRound('elite')">
+        <div class="cat-name">Elite</div>
+        <div class="cat-digits">7 digits · 12hr</div>
+        <div class="cat-pool">11.3 ETH</div>
+        <div class="cat-players">8 players · Min 0.01</div>
+        <div class="cat-timer"><div class="cat-timer-fill" style="width:20%"></div></div>
+      </div>
+      <div class="cat-card legend" onclick="selectRound('legend')">
+        <div class="cat-name">Legend</div>
+        <div class="cat-digits">8 digits · 24hr</div>
+        <div class="cat-pool">28.4 ETH</div>
+        <div class="cat-players">5 players · Min 0.05</div>
+        <div class="cat-timer"><div class="cat-timer-fill" style="width:10%"></div></div>
+      </div>
+    </div>
+
+    <div class="section-hdr" style="margin-top:20px">
+      <h2>How It Works</h2>
+    </div>
+    <div class="transparency-box">
+      <div class="transparency-title">🔒 Provably Fair</div>
+      <div class="transparency-item"><span class="check">✓</span> Number hash published before bets open</div>
+      <div class="transparency-item"><span class="check">✓</span> Commit-reveal scheme prevents front-running</div>
+      <div class="transparency-item"><span class="check">✓</span> Chainlink VRF generates target number</div>
+      <div class="transparency-item"><span class="check">✓</span> All fees hardcoded — owner can't change</div>
+      <div class="transparency-item"><span class="check">✓</span> Verified contract on Basescan</div>
+    </div>
+
+    <div class="section-hdr">
+      <h2>Recent Results</h2>
+    </div>
+    <div class="history-card">
+      <div class="history-row">
+        <div>
+          <div class="h-round">Round #246 · Rookie · 1hr ago</div>
+          <div class="h-diff">38 players · Pool: 0.98 ETH</div>
+        </div>
+        <div style="text-align:right">
+          <div class="h-target">479</div>
+          <div class="h-result" style="font-size:11px;color:var(--muted)">winner: @crypto.eth</div>
+        </div>
+      </div>
+      <div class="history-row">
+        <div>
+          <div class="h-round">Round #81 · Pro · 6hr ago</div>
+          <div class="h-diff">22 players · Pool: 4.1 ETH</div>
+        </div>
+        <div style="text-align:right">
+          <div class="h-target" style="color:#00b4ff">31847</div>
+          <div class="h-result" style="font-size:11px;color:var(--muted)">winner: @0xbased</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD PANEL -->
+  <div class="panel" id="panel-leaderboard">
+    <div class="section-hdr" style="margin-top:16px">
+      <h2>All-Time Board</h2>
+      <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">On-chain ✓</div>
+    </div>
+
+    <div class="lb-entry top1">
+      <div class="lb-rank rank1">1</div>
+      <div class="lb-avatar">🦊</div>
+      <div class="lb-info">
+        <div class="lb-name">@cryptoking.eth <span class="streak">🔥 7 streak</span></div>
+        <div class="lb-meta">Closest: 2 off · Fav: Rookie</div>
+      </div>
+      <div class="lb-won">
+        <div class="lb-amount">+42.8 ETH</div>
+        <div class="lb-rounds">147 wins</div>
+      </div>
+    </div>
+
+    <div class="lb-entry top2">
+      <div class="lb-rank rank2">2</div>
+      <div class="lb-avatar">🐻</div>
+      <div class="lb-info">
+        <div class="lb-name">@0xbased.eth</div>
+        <div class="lb-meta">Closest: 1 off · Fav: Pro</div>
+      </div>
+      <div class="lb-won">
+        <div class="lb-amount">+31.2 ETH</div>
+        <div class="lb-rounds">98 wins</div>
+      </div>
+    </div>
+
+    <div class="lb-entry top3">
+      <div class="lb-rank rank3">3</div>
+      <div class="lb-avatar">🦋</div>
+      <div class="lb-info">
+        <div class="lb-name">@degenmaxi</div>
+        <div class="lb-meta">Closest: 0 off! · Fav: Legend</div>
+      </div>
+      <div class="lb-won">
+        <div class="lb-amount">+28.5 ETH</div>
+        <div class="lb-rounds">62 wins</div>
+      </div>
+    </div>
+
+    <div class="lb-entry">
+      <div class="lb-rank rank-other">4</div>
+      <div class="lb-avatar">🦁</div>
+      <div class="lb-info">
+        <div class="lb-name">@gmeveryday</div>
+        <div class="lb-meta">Closest: 3 off · Fav: Elite</div>
+      </div>
+      <div class="lb-won">
+        <div class="lb-amount">+19.1 ETH</div>
+        <div class="lb-rounds">55 wins</div>
+      </div>
+    </div>
+
+    <div class="lb-entry">
+      <div class="lb-rank rank-other">5</div>
+      <div class="lb-avatar">🐉</div>
+      <div class="lb-info">
+        <div class="lb-name">@wagmi.base <span class="streak">🔥 3 streak</span></div>
+        <div class="lb-meta">Closest: 5 off · Fav: Pro</div>
+      </div>
+      <div class="lb-won">
+        <div class="lb-amount">+14.7 ETH</div>
+        <div class="lb-rounds">43 wins</div>
+      </div>
+    </div>
+
+    <!-- Your position -->
+    <div style="text-align:center;padding:12px 0;font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">
+      · · ·
+    </div>
+
+    <div class="lb-entry" style="border-color:rgba(0,255,136,0.25);background:rgba(0,255,136,0.03)">
+      <div class="lb-rank rank-other">24</div>
+      <div class="lb-avatar" style="background:linear-gradient(135deg,var(--accent),#00ccff)">👤</div>
+      <div class="lb-info">
+        <div class="lb-name" style="color:var(--accent)">You</div>
+        <div class="lb-meta">Closest: 4 off · 2 wins</div>
+      </div>
+      <div class="lb-won">
+        <div class="lb-amount">+0.86 ETH</div>
+        <div class="lb-rounds">2 wins</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE PANEL -->
+  <div class="panel" id="panel-create">
+    <div class="create-form">
+      <div class="section-title" style="margin-bottom:16px">🏗️ Create Custom Round</div>
+
+      <label class="form-label">Category Name</label>
+      <input class="form-input" type="text" placeholder="e.g. Whale Round 🐋">
+
+      <label class="form-label">Number of Digits</label>
+      <select class="select-input form-input">
+        <option>3 digits (100–999)</option>
+        <option>5 digits (10,000–99,999)</option>
+        <option>7 digits (1M–9.9M)</option>
+        <option>8 digits (10M–99.9M)</option>
+      </select>
+
+      <label class="form-label">Round Duration</label>
+      <select class="select-input form-input">
+        <option>1 Hour</option>
+        <option>3 Hours</option>
+        <option>6 Hours</option>
+        <option>12 Hours</option>
+        <option>24 Hours</option>
+      </select>
+
+      <label class="form-label">Minimum Bet (ETH)</label>
+      <input class="form-input" type="number" step="0.001" placeholder="0.001" value="0.001">
+
+      <label class="form-label">Seed Pool (ETH) — your initial deposit</label>
+      <input class="form-input" type="number" step="0.01" placeholder="0.1" value="0.1">
+
+      <div class="transparency-box">
+        <div class="transparency-title">💸 Your Cut as Round Creator</div>
+        <div class="transparency-item"><span class="check">✓</span> 10% of total pool goes to creator</div>
+        <div class="transparency-item"><span class="check">✓</span> Hardcoded — cannot be changed after creation</div>
+        <div class="transparency-item"><span class="check">✓</span> Target number via Chainlink VRF (you can't know it)</div>
+        <div class="transparency-item"><span class="check">✓</span> Commit hash published on-chain at creation</div>
+      </div>
+
+      <button class="submit-btn" onclick="createRound()">
+        DEPLOY ROUND
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="nav-item active" onclick="switchTab('play'); setNavActive(0)">
+    <div class="nav-icon">🎯</div>
+    <div class="nav-label">Play</div>
+  </button>
+  <button class="nav-item" onclick="switchTab('rounds'); setNavActive(1)">
+    <div class="nav-icon">🔥</div>
+    <div class="nav-label">Rounds</div>
+  </button>
+  <button class="nav-item" onclick="switchTab('leaderboard'); setNavActive(2)">
+    <div class="nav-icon">🏆</div>
+    <div class="nav-label">Board</div>
+  </button>
+  <button class="nav-item" onclick="switchTab('create'); setNavActive(3)">
+    <div class="nav-icon">➕</div>
+    <div class="nav-label">Create</div>
+  </button>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- WIN MODAL -->
+<div class="modal-overlay" id="winModal">
+  <div class="modal">
+    <div class="win-emoji">🏆</div>
+    <div class="win-title">YOU WIN!</div>
+    <div class="win-amount" id="winAmount">+0.74 ETH</div>
+    <div class="win-meta" id="winMeta">Guessed 483 · Target was 479 · Off by 4</div>
+    <button class="modal-btn primary" onclick="shareWin()">📢 Share on Farcaster</button>
+    <button class="modal-btn secondary" onclick="closeModal()">Play Next Round</button>
+  </div>
+</div>
+
+<script>
+  // STATE
+  let walletConnected = false;
+  let selectedBet = 0.001;
+  let timerSeconds = 2843;
+  let hintSeconds = 754;
+  let guessSubmitted = false;
+  let poolAmount = 1.24;
+  let playerCount = 38;
+
+  // TABS
+  function switchTab(name) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    const tabs = ['play','rounds','leaderboard','create'];
+    document.querySelectorAll('.tab')[tabs.indexOf(name)].classList.add('active');
+  }
+
+  function setNavActive(idx) {
+    document.querySelectorAll('.nav-item').forEach((n,i) => {
+      n.classList.toggle('active', i === idx);
+    });
+  }
+
+  // WALLET
+  function connectWallet() {
+    const btn = document.getElementById('walletBtn');
+    if (!walletConnected) {
+      btn.textContent = '0x7f3a...d92e';
+      btn.classList.add('connected');
+      walletConnected = true;
+      showToast('✅ Wallet connected');
+    }
+  }
+
+  // DIGIT INPUT
+  function handleDigitInput(idx) {
+    const inputs = document.querySelectorAll('.digit-input');
+    const val = inputs[idx].value;
+    if (val.length > 1) inputs[idx].value = val.slice(-1);
+    if (val && idx < inputs.length - 1) inputs[idx + 1].focus();
+    updateGuessDisplay();
+  }
+
+  function updateGuessDisplay() {
+    const inputs = document.querySelectorAll('.digit-input');
+    let guess = '';
+    inputs.forEach(i => guess += i.value || '');
+    document.getElementById('yourGuessDisplay').textContent = guess.length === inputs.length ? guess : '—';
+  }
+
+  // BET
+  function setBet(amount) {
+    selectedBet = amount;
+    document.getElementById('betAmount').value = amount;
+    document.querySelectorAll('.bet-preset').forEach(b => {
+      b.classList.toggle('active', parseFloat(b.textContent) === amount);
+    });
+  }
+  setBet(0.001);
+
+  // SUBMIT GUESS
+  function submitGuess() {
+    if (!walletConnected) { showToast('🔗 Connect wallet first!'); return; }
+    const inputs = document.querySelectorAll('.digit-input');
+    let guess = '';
+    inputs.forEach(i => guess += i.value || '');
+    if (guess.length !== inputs.length) { showToast('⚠️ Enter all digits!'); return; }
+
+    const btn = document.getElementById('submitBtn');
+    btn.textContent = 'COMMITTING HASH...';
+    btn.disabled = true;
+
+    setTimeout(() => {
+      btn.textContent = 'CONFIRMING TX...';
+      poolAmount += selectedBet;
+      playerCount += 1;
+      document.getElementById('poolAmount').textContent = poolAmount.toFixed(2) + ' ETH';
+      document.getElementById('playerCount').textContent = playerCount;
+      document.getElementById('yourGuessDisplay').textContent = guess;
+      guessSubmitted = true;
+
+      setTimeout(() => {
+        btn.textContent = '✅ GUESS LOCKED';
+        btn.style.background = 'rgba(0,255,136,0.15)';
+        btn.style.color = 'var(--accent)';
+        btn.style.border = '1px solid rgba(0,255,136,0.3)';
+        showToast('🎯 Guess ' + guess + ' locked on-chain!');
+
+        // Demo win after 3 seconds
+        setTimeout(() => showWin(guess), 4000);
+      }, 1500);
+    }, 1500);
+  }
+
+  // SHOW WIN
+  function showWin(guess) {
+    const winnings = (poolAmount * 0.6).toFixed(2);
+    document.getElementById('winAmount').textContent = '+' + winnings + ' ETH';
+    document.getElementById('winMeta').textContent = `Guessed ${guess} · Target was ${guess.slice(0,-1)}9 · Off by 1!`;
+    document.getElementById('winModal').classList.add('show');
+    launchConfetti();
+  }
+
+  function closeModal() {
+    document.getElementById('winModal').classList.remove('show');
+    resetRound();
+  }
+
+  function shareWin() {
+    showToast('📢 Cast shared to Farcaster!');
+    closeModal();
+  }
+
+  function resetRound() {
+    const btn = document.getElementById('submitBtn');
+    btn.textContent = 'LOCK IN GUESS';
+    btn.disabled = false;
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.border = '';
+    document.querySelectorAll('.digit-input').forEach(i => i.value = '');
+    updateGuessDisplay();
+    guessSubmitted = false;
+    poolAmount = parseFloat((Math.random() * 2 + 0.5).toFixed(2));
+    playerCount = Math.floor(Math.random() * 50 + 10);
+    timerSeconds = 3600;
+  }
+
+  // TIMER
+  function formatTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  }
+
+  setInterval(() => {
+    if (timerSeconds > 0) {
+      timerSeconds--;
+      document.getElementById('timerDisplay').textContent = formatTime(timerSeconds);
+      const pct = (timerSeconds / 3600) * 100;
+      document.getElementById('timerFill').style.width = pct + '%';
+    }
+
+    if (hintSeconds > 0) {
+      hintSeconds--;
+      document.getElementById('hintCountdown').textContent = formatTime(hintSeconds);
+    } else {
+      document.querySelector('.hint-text').innerHTML = '💡 Hint: <span>The number is between 300 and 700</span>';
+    }
+  }, 1000);
+
+  // TOAST
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  // CONFETTI
+  function launchConfetti() {
+    const colors = ['#00ff88','#ffd700','#ff3366','#00ccff','#7c3aed'];
+    for (let i = 0; i < 40; i++) {
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      el.style.cssText = `
+        left: ${Math.random()*100}vw;
+        top: -10px;
+        background: ${colors[Math.floor(Math.random()*colors.length)]};
+        border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
+        transform: rotate(${Math.random()*360}deg);
+      `;
+      document.body.appendChild(el);
+
+      const duration = 1500 + Math.random() * 2000;
+      el.animate([
+        { opacity: 1, transform: `translateY(0) rotate(0deg) scale(1)` },
+        { opacity: 0, transform: `translateY(${window.innerHeight + 50}px) rotate(${Math.random()*720}deg) scale(0.5)` }
+      ], { duration, easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' }).onfinish = () => el.remove();
+    }
+  }
+
+  // ROUNDS
+  function selectRound(cat) {
+    document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+    const digits = { rookie: 3, pro: 5, elite: 7, legend: 8 };
+    const n = digits[cat];
+
+    // Update digit inputs
+    const container = document.getElementById('digitInputs');
+    container.innerHTML = '';
+    for (let i = 0; i < n; i++) {
+      const input = document.createElement('input');
+      input.className = 'digit-input';
+      input.type = 'number';
+      input.min = 0; input.max = 9;
+      input.placeholder = '0';
+      input.id = 'd' + i;
+      if (n > 5) { input.style.width = '36px'; input.style.fontSize = '18px'; }
+      input.oninput = () => handleDigitInput(i);
+      container.appendChild(input);
+    }
+
+    // Update hidden number display
+    const hdn = document.getElementById('hiddenNumber');
+    hdn.innerHTML = '';
+    for (let i = 0; i < n; i++) {
+      const box = document.createElement('div');
+      box.className = 'digit-box';
+      box.textContent = '?';
+      if (n > 5) { box.style.width = '32px'; box.style.fontSize = '24px'; }
+      hdn.appendChild(box);
+    }
+
+    const badges = { rookie: 'badge-rookie', pro: 'badge-pro', elite: 'badge-elite', legend: 'badge-legend' };
+    const names = { rookie: '🟢 Rookie Round', pro: '🔵 Pro Round', elite: '🟡 Elite Round', legend: '🔴 Legend Round' };
+    document.querySelector('.category-badge').className = 'category-badge ' + badges[cat];
+    document.querySelector('.category-badge').textContent = names[cat];
+
+    switchTab('play');
+    setNavActive(0);
+    document.querySelectorAll('.tab')[0].classList.add('active');
+    document.querySelectorAll('.tab')[1].classList.remove('active');
+    showToast('🎯 Switched to ' + cat.toUpperCase() + ' round!');
+  }
+
+  // CREATE ROUND
+  function createRound() {
+    if (!walletConnected) { showToast('🔗 Connect wallet first!'); return; }
+    const btn = event.currentTarget;
+    btn.textContent = 'REQUESTING VRF...';
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.textContent = 'DEPLOYING CONTRACT...';
+      setTimeout(() => {
+        btn.textContent = '✅ ROUND CREATED!';
+        showToast('🚀 Round deployed on Base!');
+        setTimeout(() => {
+          btn.textContent = 'DEPLOY ROUND';
+          btn.disabled = false;
+        }, 3000);
+      }, 1500);
+    }, 1500);
+  }
+</script>
+<script type="module">
+        try {
+            const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk');
+            window.sdk = sdk;
+            await sdk.actions.ready({ disableNativeGestures: true });
+            console.log('✅ Farcaster SDK initialized');
+        } catch (error) {
+            console.error('❌ Farcaster SDK failed:', error);
+        }
+    </script>
+</body>
+</html>
